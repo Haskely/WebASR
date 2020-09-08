@@ -3,7 +3,7 @@
 class MicrophoneDataSource {
     constructor(
         WebWorkScriptURL,
-        onWebWorkMessageData = (data) => {},
+        onWebWorkMessageData = (data) => { },
         audio_constraints = true,
         sampleRate = undefined,
         latencyHint = undefined,
@@ -67,12 +67,14 @@ class MicrophoneDataSource {
             } else {
                 console.log('getUserMedia not supported on your browser!');
             };
-            this.audioCtx = new AudioContext({
-                sampleRate: this.options.sampleRate,
-                latencyHint: this.options.latencyHint,
-            });
+            this.audioCtx = new AudioContext(
+                {
+                    sampleRate: this.options.sampleRate,
+                    latencyHint: this.options.latencyHint,
+                }
+            );
             this.sourceNone = this.audioCtx.createMediaStreamSource(this.stream);
-            this.scriptNode = this.audioCtx.createScriptProcessor(this.options.ScriptProcessor_bufferSize, this.options.ScriptProcessor_numberOfInputChannels, 1); // bufferSize = 4096, numberOfInputChannels = 1, numberOfOutputChannels = 1
+            this.scriptNode = this.audioCtx.createScriptProcessor(this.options.ScriptProcessor_bufferSize, this.options.ScriptProcessor_numberOfInputChannels, 1);// bufferSize = 4096, numberOfInputChannels = 1, numberOfOutputChannels = 1
             this.scriptNode.onaudioprocess = (audioProcessingEvent) => {
                 const inputBuffer = audioProcessingEvent.inputBuffer;
                 // inputBuffer使用指南: https://developer.mozilla.org/en-US/docs/Web/API/AudioBuffer
@@ -86,9 +88,7 @@ class MicrophoneDataSource {
                     numberOfChannels: inputBuffer.numberOfChannels,
                     sampleRate: inputBuffer.sampleRate,
                     channels: channels,
-                    timeStamp: Date.now(),
                 };
-
                 this.myWorker.postMessage(data);
             };
         };
