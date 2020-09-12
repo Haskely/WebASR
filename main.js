@@ -1,9 +1,25 @@
 "use strict";
 
-let onWebWorkMessageData = ({ data }) => {
-    console.log("main.js onWebWorkMessageData")
-    console.log(data);
-}
+
+const waveDrawer = new WaveDrawer('audioWave', 1000, 100);
+waveDrawer.start();
+let onWebWorkMessageData = ({
+    data
+}) => {
+    console.log("main.js onWebWorkMessageData");
+    switch (data.type) {
+        case 'original_data':
+            waveDrawer.set_data(data.data);
+            break;
+        case 'stft_data':
+            break;
+        case 'stft_data':
+            break;
+        case 'stft_data':
+            break;
+    };
+
+};
 
 
 const microphone = new MicrophoneDataSource(

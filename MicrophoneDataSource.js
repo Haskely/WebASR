@@ -102,27 +102,34 @@ class MicrophoneDataSource {
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
             await this.audioCtx.resume();
             console.log("MicrophoneDataSource.audioCtx.resume()");
-        };
+        } else {
+            console.log("MicrophoneDataSource 还未Open");
+        }
     };
 
     stop = async () => {
         if (this.audioCtx && this.audioCtx.state === 'running') {
             await this.audioCtx.suspend();
             console.log("MicrophoneDataSource.audioCtx.suspend()");
+        } else {
+            console.log("MicrophoneDataSource 本来就没运行");
         };
     };
 
     close = () => {
-        this.audioCtx.close();
-        this.sourceNone.disconnect();
-        this.scriptNode.disconnect();
-        this.stream.getTracks().forEach(track => {
+
+        this.audioCtx && this.audioCtx.close();
+        this.sourceNone && this.sourceNone.disconnect();
+        this.scriptNode && this.scriptNode.disconnect();
+        this.stream && this.stream.getTracks().forEach(track => {
             track.stop();
         });
-        this.stream = null;
+
         this.audioCtx = null;
         this.sourceNone = null;
         this.scriptNode = null;
+        this.stream = null;
+
         console.log("MicrophoneDataSource closed");
     };
 
