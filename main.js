@@ -1,17 +1,20 @@
 "use strict";
 
 
-const waveDrawer = new WaveDrawer('audioWave', 1000, 100);
-waveDrawer.start();
+const waveDrawer = new WaveDrawer('audioWave', 600, 100);
+const stftDrawer = new StftDrawer('audioStft', 600, null);
+
 let onWebWorkMessageData = ({
     data
 }) => {
-    console.log("main.js onWebWorkMessageData");
+    // console.log(`main.js onWebWorkMessageData,data.type:${data.type}`);
     switch (data.type) {
         case 'original_data':
             waveDrawer.set_data(data.data);
             break;
         case 'stft_data':
+            // console.log(data);
+            stftDrawer.set_data(data.data);
             break;
         case 'stft_data':
             break;
@@ -28,6 +31,8 @@ const microphone = new MicrophoneDataSource(
     true,
     8000,
     undefined,
+    256,
+    1
 );
 
 $('body').append(`<button id='open_btn'>Open</button>`);
@@ -48,7 +53,7 @@ start_btn.onclick = async function () {
     microphone.start();
 };
 
-stop_btn.onclick = function () {
+stop_btn.onclick = async function () {
     microphone.stop();
 };
 
