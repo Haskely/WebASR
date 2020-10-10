@@ -3,7 +3,7 @@
 class MicrophoneDataSource {
     constructor(
         WebWorkScriptURL,
-        onWebWorkMessageData = (data) => {},
+        onWebWorkMessageData = (data) => { },
         audio_constraints = true,
         sampleRate = undefined,
         latencyHint = undefined,
