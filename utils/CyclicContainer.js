@@ -56,6 +56,16 @@ class Float32_2DArray {
         this._float32dataArray[i * this.width + j] = value;
     };
 
+    toList = () => {
+        const list = new Array(this.height);
+        for (let i = 0; i < this.height; i += 1) {
+            list[i] = new Float32Array(this.width);
+            for (let j = 0; j < this.width; j += 1) {
+                list[i][j] = this.get(i, j);
+            };
+        };
+        return list;
+    };
 };
 
 class Float32_2DCyclicArray {
@@ -91,7 +101,7 @@ class Float32_2DCyclicArray {
     };
 };
 
-class CyclicTensorBuffer {
+class CyclicTFTensorBuffer {
     /**
      * 
      * @param {Int32Array} shape 形状数组，如[2,3]
@@ -189,3 +199,7 @@ class CyclicTensorBuffer {
     };
 
 };
+
+class CyclicNJArray {
+
+}
