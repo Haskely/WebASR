@@ -1,13 +1,13 @@
 
 
-class Float32CyclicArray {
+class CyclicFloat32Array {
     /**
      * 
      * @param {Number} length 数据长度
      */
     constructor(length) {
 
-        this._float32array = new Float32Array(length);
+        this._float32Array = new Float32Array(length);
         this.data_length = 0;
         this.end_point = 0;
     };
@@ -16,10 +16,10 @@ class Float32CyclicArray {
      * @param {Float32Array} data 
      */
     update(data) {
-        this.end_point = (this.end_point + data.length) % this._float32array.length;
-        this.data_length = Math.min(this.data_length + data.length, this._float32array.length);
-        for (let i = 1; i < Math.min(data.length, this._float32array.length) + 1; i += 1) {
-            this._float32array[(this._float32array.length + this.end_point - i) % this._float32array.length] = data[data.length - i];
+        this.end_point = (this.end_point + data.length) % this._float32Array.length;
+        this.data_length = Math.min(this.data_length + data.length, this._float32Array.length);
+        for (let i = 1; i < Math.min(data.length, this._float32Array.length) + 1; i += 1) {
+            this._float32Array[(this._float32Array.length + this.end_point - i) % this._float32Array.length] = data[data.length - i];
         };
         return true;
     };
@@ -27,13 +27,49 @@ class Float32CyclicArray {
     toArray() {
         let array = new Float32Array(this.data_length);
         for (let i = 1; i < array.length + 1; i += 1) {
-            array[array.length - i] = this._float32array[(this._float32array.length + this.end_point - i) % this._float32array.length];
+            array[array.length - i] = this._float32Array[(this._float32Array.length + this.end_point - i) % this._float32Array.length];
         };
         return array;
     };
 };
 
-class Float32_2DArray {
+class CyclicFloat32ArrayArray {
+    constructor(length, f32arrlength) {
+        this._float32arrayArray = new Array(length);
+        for (let i = 0; i < length; i += 1) {
+            this._float32arrayArray[i] = new Float32Array(f32arrlength);
+        };
+        this.length = length;
+        this.f32arrlength = f32arrlength;
+
+        this.data_length = 0;
+        this.end_point = 0;
+    };
+    /**
+     * 
+     * @param {Array[Float32Array]} f32arrayArray 
+     */
+    update(f32arrayArray) {
+        this.end_point = (this.end_point + f32arrayArray.length) % this.length;
+        this.data_length = Math.min(this.data_length + f32arrayArray.length, this.length);
+        for (let i = 1; i < Math.min(f32arrayArray.length, this.length) + 1; i += 1) {
+            for (let j = 0; j < this.f32arrlength; j += 1) {
+                this._float32arrayArray[(this.length + this.end_point - i) % this.length][j] = f32arrayArray[f32arrayArray.length - i][j];
+            };
+        };
+        return true;
+    };
+
+    toArray() {
+        let array = new Array(this.data_length);
+        for (let i = 1; i < this.data_length + 1; i += 1) {
+            array[array.length - i] = this._float32arrayArray[(this.length + this.end_point - i) % this.length].slice();
+        };
+        return array;
+    };
+}
+
+class Float32Matrix {
     constructor(height, width) {
         this._float32dataArray = new Float32Array(height * width);
         this.height = height;
@@ -68,36 +104,63 @@ class Float32_2DArray {
     };
 };
 
-class Float32_2DCyclicArray {
+class CyclicFloat32Matrix {
 
     constructor(height, width) {
-        this._float32_2darray = new Float32_2DArray(height, width);
+        this._float32Matrix = new Float32Matrix(height, width);
         this.data_length = 0;
         this.end_point = 0;
     };
     /**
      * 
-     * @param {Float32_2DArray} _2ddata 
+     * @param {Float32Matrix} _matrix 
      */
-    update = (_2ddata) => {
-        this.end_point = (this.end_point + _2ddata.height) % this._float32_2darray.height;
-        this.data_length = Math.min(this.data_length + _2ddata.height, this._float32_2darray.height);
-        for (let i = 1; i < Math.min(_2ddata.height, this._float32_2darray.height) + 1; i += 1) {
-            for (let j = 0; j < _2ddata.width; j += 1) {
-                this._float32_2darray.set((this._float32_2darray.height + this.end_point - i) % this._float32_2darray.height, j, _2ddata.get(_2ddata.height - i, j));
+    update = (_matrix) => {
+        this.end_point = (this.end_point + _matrix.height) % this._float32Matrix.height;
+        this.data_length = Math.min(this.data_length + _matrix.height, this._float32Matrix.height);
+        for (let i = 1; i < Math.min(_matrix.height, this._float32Matrix.height) + 1; i += 1) {
+            for (let j = 0; j < _matrix.width; j += 1) {
+                this._float32Matrix.set((this._float32Matrix.height + this.end_point - i) % this._float32Matrix.height, j, _matrix.get(_matrix.height - i, j));
             };
         };
         return true;
     };
 
-    to2DArray = () => {
-        let _2darray = new Float32_2DArray(this.data_length, this._float32_2darray.width);
-        for (let i = 1; i < _2darray.height + 1; i += 1) {
-            for (let j = 0; j < _2darray.width; j += 1) {
-                _2darray.set(_2darray.height - i, j, this._float32_2darray.get((this._float32_2darray.height + this.end_point - i) % this._float32_2darray.height, j));
+    /**
+     * 
+     * @param {Float32Matrix} _matrix 
+     */
+    update = (_matrix) => {
+        this.end_point = (this.end_point + _matrix.height) % this._float32Matrix.height;
+        this.data_length = Math.min(this.data_length + _matrix.height, this._float32Matrix.height);
+        for (let i = 1; i < Math.min(_matrix.height, this._float32Matrix.height) + 1; i += 1) {
+            for (let j = 0; j < _matrix.width; j += 1) {
+                this._float32Matrix.set((this._float32Matrix.height + this.end_point - i) % this._float32Matrix.height, j, _matrix.get(_matrix.height - i, j));
             };
         };
-        return _2darray;
+        return true;
+    };
+
+
+    toMatrix = () => {
+        let _matrix = new Float32Matrix(this.data_length, this._float32Matrix.width);
+        for (let i = 1; i < _matrix.height + 1; i += 1) {
+            for (let j = 0; j < _matrix.width; j += 1) {
+                _matrix.set(_matrix.height - i, j, this._float32Matrix.get((this._float32Matrix.height + this.end_point - i) % this._float32Matrix.height, j));
+            };
+        };
+        return _matrix;
+    };
+
+    toArray = () => {
+        let list = new Array(this.data_length);
+        for (let i = 1; i < list.length + 1; i += 1) {
+            list[list.length - i] = new Float32Array(this._float32Matrix.width);
+            for (let j = 0; j < this._float32Matrix.width; j += 1) {
+                list[list.length - i][j] = this._float32Matrix.get((this._float32Matrix.height + this.end_point - i) % this._float32Matrix.height, j);
+            };
+        };
+        return list;
     };
 };
 

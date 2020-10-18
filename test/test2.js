@@ -1,3 +1,14 @@
+// 添加页面元素
+$('body').append(`<input type="file" id="audio_input" accept="audio/*" capture="microphone"/>`);
+$('body').append(`<audio id="audio" controls></audio>`);
+// 设置input
+const audio_input = document.querySelector('#audio_input');
+const audio_el = document.querySelector('#audio');
+audio_input.onchange = async (e) => {
+    // 若收到音频文件，就连接到audio_element上
+    audio_el.src = URL.createObjectURL(audio_input.files[0]);
+};
+
 const waveDrawer = new WaveDrawer('audioWave', 1000, 100);
 const stftDrawer = new StftDrawer('audioStft', 1000, null);
 $('body').append(`<button id='open_btn'>Open</button>`);
@@ -9,10 +20,9 @@ const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
 
 nj_stft = (audio_slice, fft_n, hop_n) => {
-    // audio_fft_slices = [];
+    // fft_n必须为2的n次幂
     slice_powerS_dbs = [];
     for (let cur_n = 0; cur_n + fft_n <= audio_slice.length; cur_n += hop_n) {
-        // audio_fft_slices.push(audio_slice.slice(cur_n, cur_n + fft_n));
 
         const RI = nj.zeros([fft_n, 2], 'float32');
         for (let i = 0; i < fft_n; i += 1) {
@@ -78,6 +88,7 @@ const microphone = new MicrophoneAudioProcesser(
         deal_scriptNode_data(audioData);
     },
 );
+microphone.addAudioSource(audio_el);
 
 const open_btn = document.querySelector('#open_btn');
 open_btn.onclick = async function () {

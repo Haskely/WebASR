@@ -94,6 +94,31 @@ my_1scale2 = (test_array) => {
     return flattened_array;
 };
 
+my_1scale2_1 = (test_array) => {
+    // const flattened_array = test_array.flat();
+    const shape = [test_array.length, test_array[0].length]
+    const flattened_array = new Float32Array(shape[0] * shape[1]);
+    let max_x = flattened_array[0];
+    let min_x = flattened_array[0];
+    for (let i = 0; i < shape[0]; i += 1) {
+        for (let j = 0; j < shape[1]; j += 1) {
+            flattened_array[i * shape[1] + j] = test_array[i][j];
+            if (test_array[i][j] > max_x) {
+                max_x = test_array[i][j];
+            } else if (test_array[i][j] < min_x) {
+                min_x = test_array[i][j];
+            };
+        };
+    };
+    const jc = max_x - min_x;
+    if (jc > 0) {
+        for (let i = 0; i < flattened_array.length; i += 1) {
+            flattened_array[i] = (flattened_array[i] - min_x) / jc;
+        };
+    };
+    return flattened_array;
+};
+
 my_1scale3 = (test_array) => {
 
     const shape = [test_array.length, test_array[0].length];
@@ -163,7 +188,7 @@ test_fn = (fn) => {
 
 test_all = () => {
     const test_array = tf.randomUniform([20000, 1024], 11, 137).arraySync();
-    for (let func of [tf_1scale_tidy, tf_1scale, nj_1scale, my_1scale, my_1scale2, my_1scale3, my_1scale4]) {
+    for (let func of [tf_1scale_tidy, tf_1scale, nj_1scale, my_1scale, my_1scale2, my_1scale2_1, my_1scale3, my_1scale4]) {
         console.log(`测试函数：${func.name}`);
         test_fn(() => {
             func(test_array);

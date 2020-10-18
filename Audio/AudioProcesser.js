@@ -2,11 +2,13 @@
 class AudioProcesser {
     constructor(
         audioSource = null,
+        audioDestination = 'sound',
         sampleRate = undefined,
         latencyHint = undefined,
         ScriptNode_bufferSize = 256,
         ScriptNode_numberOfInputChannels = 1,
-        onScriptNodeprocess = (audioProcessingEvent) => { },
+        processAudioData = (audioData) => { },
+        myWorker = null,
     ) {
         /**
          * Audio
@@ -40,6 +42,7 @@ class AudioProcesser {
          *                              5.MediaStream MediaStream为navigator.mediaDevices.getUserMedia()的返回对象，用于调用麦克风。
          *                                                              具体参见navigator.mediaDevices文档；具体实现样例可参见下面的MicrophoneAudioProcesser子类。
          *                              6.null 暂不指定音频源。但是在调用AudioProcesser.start()前需要调用this.addAudioSource进行指定。
+         * @param {'sound' or 'stream' or 'asAudioNode' or AudioNode or null} audioDestination 音频目的地，把音频输出到哪里
          * @param {float or undefined} sampleRate 用于AudioContext的sampleRate(采样量)，以每秒采样数来指定。
          *                              该值必须是一个浮点值，指示用于配置新上下文的采样率(以每秒采样为单位);
          *                              此外，该值必须为AudioBuffer.sampleRate所支持的值。
@@ -56,11 +59,13 @@ class AudioProcesser {
          *                              较低的缓冲大小值将导致较低(更好)的延迟。较高的值将是必要的，以避免音频分裂和故障。
          *                              建议作者不指定这个缓冲区大小，而允许实现选择一个好的缓冲区大小来平衡延迟和音频质量。
          * @param {int} ScriptProcessor_numberOfInputChannels 整数，指定此节点输入的通道数，默认为1。支持的值最多为32。
+         * @param {Function} processAudioData 处理audioData对象的函数。形如(audioData) => { }。其中audioData是AudioData实例。
+         * @param {MyWorker or null} myWorker MyWorker实例,用于多线程音频处理，可以为null代表不去使用。
          * @return {void}
          */
 
         this.options = {
-            AudioSources: [],
+            audioDestination,
             AudioContextOptions: {
                 sampleRate,
                 latencyHint,
@@ -68,22 +73,47 @@ class AudioProcesser {
             ScriptNodeOptions: {
                 ScriptNode_bufferSize,
                 ScriptNode_numberOfInputChannels,
-                onScriptNodeprocess,
+                processAudioData,
             },
         };
+        this.audioSources = {};
+        this.sourceNodes = {};
+        this.audio_source_num = 0;
         this.addAudioSource(audioSource);
+        this.audioDestination = null;
+
+        this.myWorker = myWorker;
     };
 
-    addAudioSource = async (audioSource) => {
+    addAudioSource = async (audioSource, id = null) => {
         if (audioSource) {
-            this.options.AudioSources.push(audioSource);
+            const audioSourceID = id ? id : this.audio_source_num;
+            this.audioSources[audioSourceID] = audioSource;
+            this.audio_source_num += 1;
             if (this.audioCtx) {
-                await this._setAudioSource(audioSource);
+                await this._setAudioSource(audioSourceID);
             };
         };
     };
 
-    _setAudioSource = async (audioSource) => {
+    delAudioSource = (audioSourceorID = null) => {
+        let audioSourceID = null;
+        if (typeof audioSourceorID === "object") {
+            for (let id in this.audioSources) {
+                if (this.audioSources[id] === audioSourceorID) audioSourceID = id;
+            }
+        } else {
+            audioSourceID = audioSourceorID;
+        };
+        if (audioSourceID !== null) {
+            this._unsetAudioSource(audioSourceID);
+            delete this.audioSources[audioSourceID];
+            this.audio_source_num -= 1;
+        };
+    };
+
+    _setAudioSource = async (audioSourceID) => {
+        const audioSource = this.audioSources[audioSourceID];
         let sourceNode;
         if (audioSource instanceof AudioNode) {
             sourceNode = audioSource;
@@ -92,7 +122,9 @@ class AudioProcesser {
             sourceNode.buffer = audioSource;
             sourceNode.start();
         } else if (audioSource instanceof Blob) {
-            this._setAudioSource(await this.audioCtx.decodeAudioData(await audioSource.arrayBuffer()));
+            sourceNode = this.audioCtx.createBufferSource();
+            sourceNode.buffer = await this.audioCtx.decodeAudioData(await audioSource.arrayBuffer());
+            sourceNode.start();
         } else if (audioSource instanceof HTMLMediaElement) {
             sourceNode = this.audioCtx.createMediaElementSource(audioSource);
         } else if (audioSource instanceof MediaStream) {
@@ -103,8 +135,15 @@ class AudioProcesser {
         };
 
         if (sourceNode) {
-            this.sourceNodes.push(sourceNode);
+            this.sourceNodes[audioSourceID] = sourceNode;
             sourceNode.connect(this.scriptNode);
+        };
+    };
+
+    _unsetAudioSource = (audioSourceID) => {
+        if (this.sourceNodes[audioSourceID]) {
+            this.sourceNodes[audioSourceID].disconnect();
+            delete this.sourceNodes[audioSourceID];
         };
     };
 
@@ -116,16 +155,53 @@ class AudioProcesser {
             });
             await this.audioCtx.suspend();
             this.scriptNode = this.audioCtx.createScriptProcessor(this.options.ScriptNodeOptions.ScriptNode_bufferSize, this.options.ScriptNodeOptions.ScriptNode_numberOfInputChannels, 1); // bufferSize = 4096, numberOfInputChannels = 1, numberOfOutputChannels = 1
-            this.scriptNode.onaudioprocess = this.options.ScriptNodeOptions.onScriptNodeprocess;
-            this.sourceNodes = [];
-            for (audioSource of this.options.AudioSources) {
-                this._setAudioSource(audioSource);
+            this.scriptNode.onaudioprocess = (audioProcessingEvent) => {
+                const inputBuffer = audioProcessingEvent.inputBuffer;
+                const outputBuffer = audioProcessingEvent.outputBuffer;
+                // inputBuffer对象文档: https://developer.mozilla.org/en-US/docs/Web/API/AudioBuffer
+                let channels = Array(inputBuffer.numberOfChannels);
+                for (var i = 0; i < inputBuffer.numberOfChannels; i++) {
+                    const input_ch = inputBuffer.getChannelData(i);
+                    const output_ch = outputBuffer.getChannelData(i);
+                    channels[i] = new Float32Array(input_ch.length);
+                    for (let j in channels[i]) {
+                        channels[i][j] = input_ch[j];
+                        output_ch[j] = input_ch[j];
+                    };
+                };
+                const audioData = new AudioData(inputBuffer.sampleRate, channels, this.audioCtx.getOutputTimestamp().contextTime);
+                this.options.ScriptNodeOptions.processAudioData(audioData);
+                if (this.myWorker) this.myWorker.sendData(audioData);
             };
-            this.scriptNode.connect(this.audioCtx.destination);
+            for (let audioSourceID in this.audioSources) {
+                this._setAudioSource(audioSourceID);
+            };
+            if (typeof this.options.audioDestination === 'string') {
+                switch (this.options.audioDestination) {
+                    case 'sound':
+                        this.audioDestination = this.audioCtx.destination;
+                        this.scriptNode.connect(this.audioCtx.destination);
+                        break;
+                    case 'stream':
+                        this.mediaStreamAudioDestinationNode = this.audioCtx.createMediaStreamDestination();
+                        this.audioDestination = this.mediaStreamAudioDestinationNode.stream;
+                        this.scriptNode.connect(this.mediaStreamAudioDestinationNode);
+                        break;
+                    case 'asAudioNode':
+                        this.audioDestination = this.scriptNode;
+                        break;
+                    default:
+                        console.error(`不存在名为${this.options.audioDestination}的audioDestination选项`);
+                };
+            } else if (this.options.audioDestination instanceof AudioNode) {
+                this.audioDestination = this.options.audioDestination;
+                this.scriptNode.connect(this.options.audioDestination);
+            };
             console.log("Audio opened");
         } else {
             console.log("Audio already opened");
         };
+        return this.audioDestination;
     };
 
     start = async () => {
@@ -150,29 +226,27 @@ class AudioProcesser {
 
         this.audioCtx.close();
 
-        for (let sourceNode of this.sourceNodes) {
-            sourceNode.disconnect();
+        for (let audioSourceID in this.sourceNodes) {
+            this._unsetAudioSource(audioSourceID);
         };
-        this.scriptNode.disconnect();
+        this.scriptNode.disconnect(); this.scriptNode = null;
         this.audioCtx = null;
-        this.sourceNodes = null;
-        this.scriptNode = null;
 
         console.log("Audio closed");
     };
 };
 
-
 class MicrophoneAudioProcesser extends AudioProcesser {
     constructor(
         audio_constraints = true,
+        audioDestination = 'sound',
         sampleRate = undefined,
         latencyHint = undefined,
         ScriptNode_bufferSize = 256,
         ScriptNode_numberOfInputChannels = 1,
-        onScriptNodeprocess = (audioProcessingEvent) => { },
+        processAudioData = (audioData) => { },
     ) {
-        super(null, sampleRate, latencyHint, ScriptNode_bufferSize, ScriptNode_numberOfInputChannels, onScriptNodeprocess);
+        super(null, audioDestination, sampleRate, latencyHint, ScriptNode_bufferSize, ScriptNode_numberOfInputChannels, processAudioData);
         this.options.audio_constraints = audio_constraints;
         this.stream = null;
     };
