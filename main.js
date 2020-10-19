@@ -9,7 +9,7 @@ $('body').append(`
 ); const audio_input = document.querySelector('#audio_input'); const record_btn = document.querySelector('#record_btn');
 $('body').append(`<div id='audios'></div>`); const audios_div = document.querySelector('#audios');
 
-const waveDrawer = new WaveDrawer('audioWave', 1000, 100);
+const waveDrawer = new WaveDrawer('audioWave', 1000, 125);
 const stftDrawer = new StftDrawer('audioStft', 1000, null);
 
 $('body').append(`<button id='open_btn'>Open</button>`); const open_btn = document.querySelector('#open_btn');
@@ -83,11 +83,8 @@ close_btn.onclick = async function () {
  */
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
-const myWorker = new MyWorker('Workers/AudioProcesserWorker.js',
-    (data) => {
-
-    },
-);
+const myWorker = new MyWorker('Workers/AudioProcesserWorker.js');
+myWorker.reciveData('stftDataContent', (content) => { });
 const audioProcesser = new AudioProcesser(
     null,
     'sound',
@@ -108,10 +105,20 @@ const audioProcesser = new AudioProcesser(
         const full_stftData = audioContainer.getStftData();
         stftDrawer.set_data(full_stftData);
 
-        myWorker.sendData({
-            'type': 'stftDatastft',
-            'content': full_stftData.stft,
-        }, [full_stftData.stft]);
+        // myWorker.sendData({
+        //     type: 'stftData',
+        //     content: {
+        //         sampleRate: full_stftData.sampleRate,
+        //         fft_n: full_stftData.fft_n,
+        //         hop_n: full_stftData.hop_n,
+        //         stft: {
+        //             stftMartrixArrayBuffer: full_stftData.stft._arrayBuffer,
+        //             stftMartrixHeight: full_stftData.stft.height,
+        //             stftMartrixWidth: full_stftData.stft.width,
+        //         },
+        //         audioTime: full_stftData.audioTime,
+        //     },
+        // }, [full_stftData.stft._arrayBuffer]);
     },
     null,
 );
@@ -132,5 +139,6 @@ const nj_stft = (audio_slice, fft_n, hop_n) => {
         };
         slice_powerS_dbs.push(cur_powerS_db);
     };
-    return slice_powerS_dbs;
+    const stftMatrix = Float32Matrix.f32nestedarray2matrix(slice_powerS_dbs);
+    return stftMatrix;
 };

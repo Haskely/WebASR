@@ -131,7 +131,9 @@ class StftDataCyclicContainer {
         this.audioTime = stftData.audioTime;
     };
 
+
     getdata = () => {
+        // const stftArray = this.stftCyclicMatrix.toArray();
         return new StftData(
             this.sampleRate,
             this.fft_n,

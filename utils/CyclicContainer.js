@@ -33,7 +33,7 @@ class CyclicFloat32Array {
     };
 };
 
-class CyclicFloat32ArrayArray {
+class CyclicFloat32NestedArray {
     constructor(length, f32arrlength) {
         this._float32arrayArray = new Array(length);
         for (let i = 0; i < length; i += 1) {
@@ -67,13 +67,29 @@ class CyclicFloat32ArrayArray {
         };
         return array;
     };
-}
+};
 
 class Float32Matrix {
+
+    static f32nestedarray2matrix(nestedarray) {
+        const height = nestedarray.length;
+        const width = nestedarray[0].length;
+        const float32Matrix = new Float32Matrix(height, width);
+        for (let i = 0; i < height; i += 1) {
+            for (let j = 0; j < width; j += 1) {
+                float32Matrix.set(i, j, nestedarray[i][j]);
+            };
+        };
+        return float32Matrix;
+    };
+
     constructor(height, width) {
-        this._float32dataArray = new Float32Array(height * width);
-        this.height = height;
-        this.width = width;
+        if (!(height > 0 && width > 0)) throw new Error(`矩阵长宽均不能小于等于零!然而传入长宽：\nheight:${height}\t${width}`);
+        this.height = Math.ceil(height);
+        this.width = Math.ceil(width);
+        this._arrayBuffer = new ArrayBuffer(Float32Array.BYTES_PER_ELEMENT * this.height * this.width);
+        this._float32ArrayView = new Float32Array(this._arrayBuffer);
+
     };
 
     _check_index = (i, j) => {
@@ -83,13 +99,13 @@ class Float32Matrix {
     };
 
     get = (i, j) => {
-        this._check_index(i, j);
-        return this._float32dataArray[i * this.width + j];
+        // this._check_index(i, j);
+        return this._float32ArrayView[i * this.width + j];
     };
 
     set = (i, j, value) => {
-        this._check_index(i, j);
-        this._float32dataArray[i * this.width + j] = value;
+        // this._check_index(i, j);
+        this._float32ArrayView[i * this.width + j] = value;
     };
 
     toList = () => {

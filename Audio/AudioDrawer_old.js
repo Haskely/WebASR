@@ -19,47 +19,30 @@ class WaveDrawer extends Drawer {
      */
     draw = async (data) => {
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const perpixel_n = Math.round(this.total_duration * data.sampleRate / this.canvas.width);
-        const audio_canvas_length = Math.ceil(data.channels[0].length / perpixel_n);
+        const dx = this.canvas.width / (this.total_duration * data.sampleRate);
         const wave_area_height = this.show_time ? this.canvas.height - 20 : this.canvas.height;
         const end_dy = wave_area_height / (data.channels.length * 2);
 
 
-        const flatten_wave_imgArray_count = new Float32Array(audio_canvas_length * wave_area_height);
-        let max_count = 0;
+        this.canvas_ctx.beginPath();
         for (let ch_n = 0; ch_n < data.channels.length; ch_n += 1) {
             let audio_pcm = data.channels[ch_n];
             let end_y = end_dy * (ch_n * 2 + 1);
-            for (let i = 0; i < audio_canvas_length; i += 1) {
-                const cur_x = i;
-                for (let cp = 0; cp < perpixel_n && cp < audio_pcm.length - i * perpixel_n; cp += 1) {
-                    const cur_w = audio_pcm[i * perpixel_n + cp];
-                    const cur_y = Math.round(cur_w * end_dy + end_y);
-                    const cur_n = flatten_wave_imgArray_count[cur_x + cur_y * audio_canvas_length] + 1;
-                    flatten_wave_imgArray_count[cur_x + cur_y * audio_canvas_length] = cur_n;
-                    if (cur_n > max_count) max_count = cur_n;
-                };
+            this.canvas_ctx.moveTo(this.canvas.width, end_y);
+            for (let i = 1; i <= audio_pcm.length && dx * i <= this.canvas.width; i += 1) {
+                let cur_y = end_y - Math.round(audio_pcm[audio_pcm.length - i] * end_dy);
+                this.canvas_ctx.lineTo(this.canvas.width - dx * i, cur_y);
             };
         };
-        const imageData = this.canvas_ctx.createImageData(audio_canvas_length, wave_area_height);
-        for (let i = 0; i < flatten_wave_imgArray_count.length; i += 1) {
-            const p = i * 4;
-            // const cur_pixel = flatten_wave_imgArray_count[i] ? 0.5 + flatten_wave_imgArray_count[i] * 0.5 / max_count : 0;
-
-            const cur_pixel = flatten_wave_imgArray_count[i] ? adjust_one(flatten_wave_imgArray_count[i] / max_count) : 0;
-            imageData.data[p + 0] = 255 * cur_pixel; // R value
-            imageData.data[p + 1] = 255 * cur_pixel; // G value
-            imageData.data[p + 2] = 255 * cur_pixel; // B value
-            imageData.data[p + 3] = 255; // A value
-        };
-        this.canvas_ctx.putImageData(imageData, this.canvas.width - audio_canvas_length, 0);
+        this.canvas_ctx.stroke();
+        this.canvas_ctx.closePath();
 
         if (this.show_time) {
             const end_time = data.audioTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
-
+            const audio_canvas_length = Math.round(data.channels[0].length * dx);
             const s_y = this.canvas.height - 20, e_y = this.canvas.height - 10;
 
             for (let i = 1; time_dx * i <= Math.min(this.canvas.width, audio_canvas_length); i += 1) {
@@ -72,14 +55,6 @@ class WaveDrawer extends Drawer {
         };
     };
 };
-
-function adjust_one(x) {
-    // return Math.sin(x * Math.PI / 2);
-    if (x >= 0) return Math.sqrt(x * (2 - x));
-    else return -Math.sqrt(-x * (2 - x));
-
-}
-
 
 class StftDrawer extends Drawer {
     constructor(id = 'audioStft', width = 1000, height = null, total_duration = 10, show_time = true) {
