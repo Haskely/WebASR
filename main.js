@@ -85,6 +85,9 @@ const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
 const myWorker = new MyWorker('Workers/AudioProcesserWorker.js');
 myWorker.reciveData('stftDataContent', (content) => { });
+myWorker.sendData('initInfo', {
+    sampleRate, fft_s, hop_s, numberOfChannels: 1, max_duration: 10
+});
 const audioProcesser = new AudioProcesser(
     null,
     'sound',
@@ -97,31 +100,40 @@ const audioProcesser = new AudioProcesser(
         const cur_full_audioData = audioContainer.getAudioData();
         waveDrawer.set_data(cur_full_audioData);
 
-        const cur_slice_length = audioData.channels[0].length;
-        const cur_audio_slice4stft = cur_full_audioData.channels[0].slice(-(cur_slice_length + audioContainer.fft_n - audioContainer.hop_n))
-        const stft = nj_stft(cur_audio_slice4stft, audioContainer.fft_n, audioContainer.hop_n);
-        const stftData = new StftData(audioData.sampleRate, audioContainer.fft_n, audioContainer.hop_n, stft, audioData.audioTime)
+        const stftData = new StftData(
+            audioData.sampleRate,
+            audioContainer.fft_n,
+            audioContainer.hop_n,
+            getAudioClipStft(cur_full_audioData, audioData.channels[0].length, audioContainer.fft_n, audioContainer.hop_n),
+            audioData.audioTime
+        );
         audioContainer.updateStftDataClip(stftData);
-        const full_stftData = audioContainer.getStftData();
-        stftDrawer.set_data(full_stftData);
+        stftDrawer.set_data(audioContainer.getStftData());
 
-        // myWorker.sendData({
-        //     type: 'stftData',
-        //     content: {
-        //         sampleRate: full_stftData.sampleRate,
-        //         fft_n: full_stftData.fft_n,
-        //         hop_n: full_stftData.hop_n,
-        //         stft: {
-        //             stftMartrixArrayBuffer: full_stftData.stft._arrayBuffer,
-        //             stftMartrixHeight: full_stftData.stft.height,
-        //             stftMartrixWidth: full_stftData.stft.width,
-        //         },
-        //         audioTime: full_stftData.audioTime,
-        //     },
-        // }, [full_stftData.stft._arrayBuffer]);
+        myWorker.sendData(
+            'stftData',
+            {
+                sampleRate: stftData.sampleRate,
+                fft_n: stftData.fft_n,
+                hop_n: stftData.hop_n,
+                stft: {
+                    stftMartrixArrayBuffer: stftData.stft._arrayBuffer,
+                    stftMartrixHeight: stftData.stft.height,
+                    stftMartrixWidth: stftData.stft.width,
+                },
+                audioTime: stftData.audioTime,
+            },
+            [stftData.stft._arrayBuffer]
+        );
     },
     null,
 );
+
+const getAudioClipStft = (full_audioData, audio_cliplength, fft_n, hop_n) => {
+    const cur_audio_slice4stft = full_audioData.channels[0].slice(-(audio_cliplength + fft_n - hop_n));
+    return nj_stft(cur_audio_slice4stft, fft_n, hop_n);
+}
+
 const nj_stft = (audio_slice, fft_n, hop_n) => {
     // fft_n必须为2的n次幂
     const slice_powerS_dbs = [];

@@ -1,6 +1,6 @@
 
 class AudioContainer {
-    constructor(sampleRate, fft_s, hop_s, numberOfChannels, max_duration) {
+    constructor(sampleRate, fft_s, hop_s, numberOfChannels, max_duration, save_audio = true, save_stft = true) {
         this.sampleRate = sampleRate;
         this.fft_s = fft_s;
         this.hop_s = hop_s;
@@ -9,8 +9,8 @@ class AudioContainer {
         this.numberOfChannels = numberOfChannels;
         this.max_duration = max_duration;
 
-        this.audioDataCyclicContainer = new AudioDataCyclicContainer(sampleRate, numberOfChannels, max_duration);
-        this.stftDataCyclicContainer = new StftDataCyclicContainer(sampleRate, this.fft_n, this.hop_n, max_duration);
+        if (save_audio) this.audioDataCyclicContainer = new AudioDataCyclicContainer(sampleRate, numberOfChannels, max_duration);
+        if (save_stft) this.stftDataCyclicContainer = new StftDataCyclicContainer(sampleRate, this.fft_n, this.hop_n, max_duration);
     };
 
     updateAudioDataClip(audioData) {
@@ -62,7 +62,6 @@ class StftData {
         this.audioTime = audioTime;
     };
 };
-
 
 class AudioDataCyclicContainer {
     constructor(
