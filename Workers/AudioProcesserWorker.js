@@ -24,9 +24,16 @@ async function init_model() {
     return model;
 };
 
+async function prepare_pinyin() {
+    const { PinYin } = await import('../ASR/Label/pinyinbase.js');
+    const pinyin = new PinYin('../ASR/Label/pinyin2num_dict.json');
+    await pinyin.init();
+    return pinyin;
+}
+
 async function main() {
     const { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix } = await init_import();
-
+    const pinyin = await prepare_pinyin();
     const myWorkerScript = new MyWorkerScript(self);
     myWorkerScript.reciveData('initInfo',
         async (dataContent) => {
@@ -65,16 +72,14 @@ async function main() {
             const onebatch_stft_tfTensor = tf.tensor(full_stftData.stft._float32ArrayView, [1, full_stftData.stft.height, full_stftData.stft.width]);
 
             const predict_res = self.model.predict(onebatch_stft_tfTensor);
-            const softmax_res = predict_res.softmax();
-
-            // postMessage({
-            //     'type': 'predict_res',
-            //     'content': predict_res.arraySync()
-            // }, undefined, []);
+            const softmax_res = predict_res.squeeze(0).softmax();
+            const argmax_res_array = softmax_res.argMax(-1).arraySync();
+            const pinyinArray = argmax_res_array.map(max_arg => pinyin.num2py(max_arg));
+            myWorkerScript.sendData('pinyinArray', pinyinArray);
 
             self.audioContainer.stftDataCyclicContainer.cleardata();
 
-            myWorkerScript.sendData('predict_res', softmax_res.arraySync());
+
         };
 
     });

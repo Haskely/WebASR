@@ -84,7 +84,8 @@ switch_btn.onclick = async function (e) {
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
 const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
-myWorker.reciveData('predict_res', (content) => { console.log(`输出长度:${content.length},${content[0].length},${content[0][0].length}`) });
+// myWorker.reciveData('predict_res', (content) => { console.log(`输出长度:${content.length},${content[0].length},${content[0][0].length}`) });
+myWorker.reciveData('pinyinArray', (pinyinArray) => { console.log(pinyinArray) });
 myWorker.reciveData('Event', (content) => {
     switch (content) {
         case 'created':
