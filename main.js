@@ -1,5 +1,9 @@
 "use strict";
-
+import { WaveDrawer, StftDrawer } from './Audio/AudioDrawer.js'
+import { AudioFlowProcesser } from './Audio/AudioFlowProcesser.js';
+import { AudioUtils } from './Audio/AudioUtils.js';
+import { AudioContainer } from './Audio/AudioContainer.js';
+import { MyWorker } from './Workers/MyWorker.js';
 // 添加页面元素
 $('body').append(`
     <div>
@@ -12,10 +16,7 @@ $('body').append(`<div id='audios'></div>`); const audios_div = document.querySe
 const waveDrawer = new WaveDrawer('audioWave', 1000, 125);
 const stftDrawer = new StftDrawer('audioStft', 1000, null);
 
-$('body').append(`<button id='open_btn'>Open</button>`); const open_btn = document.querySelector('#open_btn');
-$('body').append(`<button id='start_btn'>Start</button>`); const start_btn = document.querySelector('#start_btn');
-$('body').append(`<button id='stop_btn'>Stop</button>`); const stop_btn = document.querySelector('#stop_btn');
-$('body').append(`<button id='close_btn'>Close</button>`); const close_btn = document.querySelector('#close_btn');
+$('body').append(`<button id='switch_btn'></button>`); const switch_btn = document.querySelector('#switch_btn');
 // 元素添加完毕
 
 // 设置页面元素事件
@@ -59,21 +60,20 @@ record_btn.onclick = async (e) => {
     };
 };
 
-open_btn.onclick = async function () {
-    audioProcesser.open();
+switch_btn.disabled = true;
+switch_btn.textContent = "Loading..."
+switch_btn.onclick = async function (e) {
+    if (audioProcesser.isRunning()) {
+        audioProcesser.stop();
+        e.target.textContent = "Start";
+    } else {
+        audioProcesser.start();
+        e.target.textContent = "Stop";
+    };
+
 };
 
-start_btn.onclick = async function () {
-    audioProcesser.start();
-};
 
-stop_btn.onclick = async function () {
-    audioProcesser.stop();
-};
-
-close_btn.onclick = async function () {
-    audioProcesser.close();
-};
 // 
 
 // 设置音频处理流程
@@ -83,12 +83,26 @@ close_btn.onclick = async function () {
  */
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
-const myWorker = new MyWorker('Workers/AudioProcesserWorker.js');
-myWorker.reciveData('stftDataContent', (content) => { });
-myWorker.sendData('initInfo', {
-    sampleRate, fft_s, hop_s, numberOfChannels: 1, max_duration: 10
+const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
+myWorker.reciveData('predict_res', (content) => { console.log(`输出长度:${content.length},${content[0].length},${content[0][0].length}`) });
+myWorker.reciveData('Event', (content) => {
+    switch (content) {
+        case 'created':
+            myWorker.sendData('initInfo', {
+                sampleRate, fft_s, hop_s, numberOfChannels: 1, max_duration: 3
+            });
+            break;
+        case 'inited':
+            switch_btn.textContent = "Start";
+            switch_btn.disabled = false;
+            break;
+        default:
+            console.error(`[MainThread]收到未知Event:${content}`);
+    };
 });
-const audioProcesser = new AudioProcesser(
+
+
+const audioProcesser = new AudioFlowProcesser(
     null,
     'sound',
     sampleRate,
@@ -100,13 +114,7 @@ const audioProcesser = new AudioProcesser(
         const cur_full_audioData = audioContainer.getAudioData();
         waveDrawer.set_data(cur_full_audioData);
 
-        const stftData = new StftData(
-            audioData.sampleRate,
-            audioContainer.fft_n,
-            audioContainer.hop_n,
-            getAudioClipStft(cur_full_audioData, audioData.channels[0].length, audioContainer.fft_n, audioContainer.hop_n),
-            audioData.audioTime
-        );
+        const stftData = AudioUtils.getAudioClipStftData(cur_full_audioData, audioData.channels[0].length, audioContainer.fft_n, audioContainer.hop_n);
         audioContainer.updateStftDataClip(stftData);
         stftDrawer.set_data(audioContainer.getStftData());
 
@@ -128,29 +136,4 @@ const audioProcesser = new AudioProcesser(
     },
     null,
 );
-
-const getAudioClipStft = (full_audioData, audio_cliplength, fft_n, hop_n) => {
-    const cur_audio_slice4stft = full_audioData.channels[0].slice(-(audio_cliplength + fft_n - hop_n));
-    return nj_stft(cur_audio_slice4stft, fft_n, hop_n);
-}
-
-const nj_stft = (audio_slice, fft_n, hop_n) => {
-    // fft_n必须为2的n次幂
-    const slice_powerS_dbs = [];
-    for (let cur_n = 0; cur_n + fft_n <= audio_slice.length; cur_n += hop_n) {
-
-        const RI = nj.zeros([fft_n, 2], 'float32');
-        for (let i = 0; i < fft_n; i += 1) {
-            RI.set(i, 0, audio_slice[cur_n + i] * Math.sin(i * Math.PI / fft_n) ** 2);
-        };
-        const fft = nj.fft(RI);
-        const cur_powerS_db = new Float32Array(fft_n / 2 + 1);
-        for (let j = 0; j < cur_powerS_db.length; j += 1) {
-            cur_powerS_db[j] = 50 + 10 * Math.log10(fft.get(j, 0) ** 2 + fft.get(j, 1) ** 2);
-            if (cur_powerS_db[j] < 0) cur_powerS_db[j] = 0;
-        };
-        slice_powerS_dbs.push(cur_powerS_db);
-    };
-    const stftMatrix = Float32Matrix.f32nestedarray2matrix(slice_powerS_dbs);
-    return stftMatrix;
-};
+audioProcesser.open();

@@ -11,6 +11,12 @@ class CyclicFloat32Array {
         this.data_length = 0;
         this.end_point = 0;
     };
+
+    clear = () => {
+        this.data_length = 0;
+        this.end_point = 0;
+    };
+
     /**
      * 
      * @param {Float32Array} data 
@@ -45,6 +51,12 @@ class CyclicFloat32NestedArray {
         this.data_length = 0;
         this.end_point = 0;
     };
+
+    clear = () => {
+        this.data_length = 0;
+        this.end_point = 0;
+    };
+
     /**
      * 
      * @param {Array[Float32Array]} f32arrayArray 
@@ -127,19 +139,10 @@ class CyclicFloat32Matrix {
         this.data_length = 0;
         this.end_point = 0;
     };
-    /**
-     * 
-     * @param {Float32Matrix} _matrix 
-     */
-    update = (_matrix) => {
-        this.end_point = (this.end_point + _matrix.height) % this._float32Matrix.height;
-        this.data_length = Math.min(this.data_length + _matrix.height, this._float32Matrix.height);
-        for (let i = 1; i < Math.min(_matrix.height, this._float32Matrix.height) + 1; i += 1) {
-            for (let j = 0; j < _matrix.width; j += 1) {
-                this._float32Matrix.set((this._float32Matrix.height + this.end_point - i) % this._float32Matrix.height, j, _matrix.get(_matrix.height - i, j));
-            };
-        };
-        return true;
+
+    clear = () => {
+        this.data_length = 0;
+        this.end_point = 0;
     };
 
     /**
@@ -281,4 +284,6 @@ class CyclicTFTensorBuffer {
 
 class CyclicNJArray {
 
-}
+};
+
+export { CyclicFloat32Array, CyclicFloat32NestedArray, CyclicFloat32Matrix, Float32Matrix }

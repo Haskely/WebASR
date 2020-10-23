@@ -1,7 +1,7 @@
 class Drawer {
     constructor(id = 'canvas', width = 600, height = 400) {
 
-        this.canvas = document.querySelector(`#${id}`);
+        this.canvas = document.querySelector(`canvas#${id}`);
         if (!this.canvas) {
             $('body').append(`<div style="text-align:center;"><canvas id='${id}' width="${width}" height="${height}" style="text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
             this.canvas = document.querySelector(`#${id}`);
@@ -67,3 +67,5 @@ function scale_imageMatrix(imgM1, imgM2) {
         };
     };
 };
+
+export { Drawer }

@@ -1,31 +1,89 @@
 "use strict";
-importScripts("../tensorflowjs/tfjs@2.3.0.js");
-importScripts("../tensorflowjs/tfjs@2.3.0.js");
-importScripts("../Audio/AudioContainer.js");
-importScripts("../utils/myWorker.js");
-importScripts("../utils/CyclicContainer.js");
 
-let audioContainer;
-let model;
-const myWorkerScript = new MyWorkerScript(postMessage);
-myWorkerScript.reciveData('initInfo',
-    async (dataContent) => {
-        audioContainer = new AudioContainer(
-            dataContent.sampleRate,
-            dataContent.fft_s,
-            dataContent.hop_s,
-            dataContent.numberOfChannels,
-            dataContent.max_duration,
-            false);
-        model = await tf.loadLayersModel(
-            'https://storage.googleapis.com/tfjs-models/tfjs/iris_v1/model.json');
-        model.summary();
-    }
-);
-myWorkerScript.reciveData('stftData', deal_stftData);
-onmessage = myWorkerScript.onmessage;
+let model, audioContainer;
+async function init_import() {
+    // const { tf } = await import('../tensorflowjs/tfjs@2.6.0.js');
+    const { MyWorkerScript } = await import('../Workers/myWorker.js');
+    const { AudioContainer, AudioData, StftData } = await import('../Audio/AudioContainer.js');
+    const { Float32Matrix } = await import('../utils/CyclicContainer.js');
+
+    return { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix }
+};
+
+
+importScripts("../tensorflowjs/tfjs@2.6.0.js");
+// importScripts("../Audio/AudioContainer.js");
+// importScripts("../utils/myWorker.js");
+// importScripts("../utils/CyclicContainer.js");
+
+async function init_model() {
+    const model = await tf.loadGraphModel('../tensorflowjs/tfjsModel/tfjs_savedModel/model.json');
+
+    // const len = Math.round(self.audioContainer.max_duration / self.audioContainer.hop_s);
+    // model.predict(tf.zeros([1, len, 129]));
+    return model;
+};
+
+async function main() {
+    const { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix } = await init_import();
+
+    const myWorkerScript = new MyWorkerScript(self);
+    myWorkerScript.reciveData('initInfo',
+        async (dataContent) => {
+            self.audioContainer = new AudioContainer(
+                dataContent.sampleRate,
+                dataContent.fft_s,
+                dataContent.hop_s,
+                dataContent.numberOfChannels,
+                dataContent.max_duration,
+                false);
+            self.model = await init_model();
+            const len = Math.round(self.audioContainer.max_duration / self.audioContainer.hop_s);
+            self.model.predict(tf.zeros([1, len, 129]));
+            console.log(`当前tensorflowJS的Backend:${tf.getBackend()}`)
+            myWorkerScript.sendData('Event', 'inited');
+        }
+    );
+    myWorkerScript.reciveData('stftData', (stftDataContent) => {
+        const stft = new Float32Matrix(
+            stftDataContent.stft.stftMartrixHeight,
+            stftDataContent.stft.stftMartrixWidth
+        );
+        stft._arrayBuffer = stftDataContent.stft.stftMartrixArrayBuffer;
+        self.audioContainer.updateStftDataClip(
+            new StftData(
+                stftDataContent.sampleRate,
+                stftDataContent.fft_n,
+                stftDataContent.hop_n,
+                stft,
+                stftDataContent.audioTime
+            )
+        );
+
+        if (self.audioContainer.stftDataCyclicContainer.timeLength > 0.5) {
+            const full_stftData = self.audioContainer.getStftData();
+            const onebatch_stft_tfTensor = tf.tensor(full_stftData.stft._float32ArrayView, [1, full_stftData.stft.height, full_stftData.stft.width]);
+
+            const predict_res = self.model.predict(onebatch_stft_tfTensor);
+            const softmax_res = predict_res.softmax();
+
+            // postMessage({
+            //     'type': 'predict_res',
+            //     'content': predict_res.arraySync()
+            // }, undefined, []);
+
+            self.audioContainer.stftDataCyclicContainer.cleardata();
+
+            myWorkerScript.sendData('predict_res', softmax_res.arraySync());
+        };
+
+    });
+    myWorkerScript.sendData('Event', 'created');
+};
+
+
 /**
- * 
+ *
  * @param {Object} stftDataContent 形如
  *                              {
  *                                  sampleRate: full_stftData.sampleRate,
@@ -40,25 +98,4 @@ onmessage = myWorkerScript.onmessage;
  *                              }
  */
 
-function deal_stftData(stftDataContent) {
-
-    const stft = new Float32Matrix(
-        stftDataContent.stft.stftMartrixHeight,
-        stftDataContent.stft.stftMartrixWidth
-    );
-    stft._arrayBuffer = stftDataContent.stft.stftMartrixArrayBuffer;
-    audioContainer.updateStftDataClip(
-        new StftData(
-            stftDataContent.sampleRate,
-            stftDataContent.fft_n,
-            stftDataContent.hop_n,
-            stft,
-            stftDataContent.audioTime
-        )
-    );
-    const full_stftData = audioContainer.getStftData();
-    const onebatch_stft_tfTensor = tf.tensor3d(full_stftData.stft._float32ArrayView, [1, full_stftData.stft.height, full_stftData.stft.width]);
-
-    predict_res = model.predictOnBatch(onebatch_stft_tfTensor);
-    myWorkerScript.sendData('predict_res', predict_res, []);
-};
+main();

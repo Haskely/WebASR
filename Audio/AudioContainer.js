@@ -1,3 +1,4 @@
+import { CyclicFloat32Array, CyclicFloat32NestedArray, CyclicFloat32Matrix, Float32Matrix } from '../utils/CyclicContainer.js';
 
 class AudioContainer {
     constructor(sampleRate, fft_s, hop_s, numberOfChannels, max_duration, save_audio = true, save_stft = true) {
@@ -36,7 +37,7 @@ class AudioData {
      * 
      * @param {int32} sampleRate 
      * @param {Array[Float32Array]} channels 
-     * @param {int64} audioTime 
+     * @param {float32} audioTime 
      */
     constructor(sampleRate, channels, audioTime) {
         this.sampleRate = sampleRate;
@@ -52,7 +53,7 @@ class StftData {
      * @param {int32} fft_n 
      * @param {int32} hop_n 
      * @param {Float32Matrix} stft 
-     * @param {int64} audioTime 
+     * @param {float32} audioTime 
      */
     constructor(sampleRate, fft_n, hop_n, stft, audioTime) {
         this.sampleRate = sampleRate;
@@ -77,6 +78,16 @@ class AudioDataCyclicContainer {
             this.audioCyclicChannels[i] = new CyclicFloat32Array(Math.round(sampleRate * max_duration));
         };
         this.audioTime = null;
+    };
+
+    get timeLength() {
+        return this.audioCyclicChannels[0].data_length * this.sampleRate;
+    };
+
+    cleardata = () => {
+        for (let i = 0; i < numberOfChannels; i += 1) {
+            this.audioCyclicChannels[i].clear();
+        };
     };
 
     _checkAudioData = (audioData) => {
@@ -125,6 +136,14 @@ class StftDataCyclicContainer {
         };
     };
 
+    get timeLength() {
+        return this.stftCyclicMatrix.data_length * this.hop_n / this.sampleRate;
+    };
+
+    cleardata = () => {
+        this.stftCyclicMatrix.clear();
+    };
+
     updatedata = (stftData) => {
         this.stftCyclicMatrix.update(stftData.stft);
         this.audioTime = stftData.audioTime;
@@ -143,3 +162,4 @@ class StftDataCyclicContainer {
     };
 };
 
+export { AudioData, AudioDataCyclicContainer, StftData, StftDataCyclicContainer, AudioContainer }
