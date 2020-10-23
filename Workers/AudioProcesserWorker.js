@@ -3,7 +3,7 @@
 let model, audioContainer;
 async function init_import() {
     // const { tf } = await import('../tensorflowjs/tfjs@2.6.0.js');
-    const { MyWorkerScript } = await import('../Workers/myWorker.js');
+    const { MyWorkerScript } = await import('../Workers/MyWorker.js');
     const { AudioContainer, AudioData, StftData } = await import('../Audio/AudioContainer.js');
     const { Float32Matrix } = await import('../utils/CyclicContainer.js');
 
