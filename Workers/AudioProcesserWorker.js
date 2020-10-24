@@ -2,7 +2,6 @@
 
 let model, audioContainer;
 async function init_import() {
-    // const { tf } = await import('../tensorflowjs/tfjs@2.6.0.js');
     const { MyWorkerScript } = await import('../Workers/MyWorker.js');
     const { AudioContainer, AudioData, StftData } = await import('../Audio/AudioContainer.js');
     const { Float32Matrix } = await import('../utils/CyclicContainer.js');
@@ -29,14 +28,19 @@ async function prepare_pinyin() {
     const pinyin = new PinYin('../ASR/Label/pinyin2num_dict.json');
     await pinyin.init();
     return pinyin;
-}
+};
 
 async function main() {
     const { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix } = await init_import();
     const pinyin = await prepare_pinyin();
     const myWorkerScript = new MyWorkerScript(self);
+    function log(msg) {
+        // console.log(`[MyWorkerScript]${msg}`);
+        myWorkerScript.sendData('Log', msg);
+    };
     myWorkerScript.reciveData('initInfo',
         async (dataContent) => {
+            log(`收到initInfo,准备初始化audioContainer`);
             self.audioContainer = new AudioContainer(
                 dataContent.sampleRate,
                 dataContent.fft_s,
@@ -44,10 +48,11 @@ async function main() {
                 dataContent.numberOfChannels,
                 dataContent.max_duration,
                 false);
+            log(`准备加载model...`);
             self.model = await init_model();
             const len = Math.round(self.audioContainer.max_duration / self.audioContainer.hop_s);
             self.model.predict(tf.zeros([1, len, 129]));
-            console.log(`当前tensorflowJS的Backend:${tf.getBackend()}`)
+            log(`当前tensorflowJS的Backend:${tf.getBackend()}`);
             myWorkerScript.sendData('Event', 'inited');
         }
     );

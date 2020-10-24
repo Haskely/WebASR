@@ -84,16 +84,19 @@ switch_btn.onclick = async function (e) {
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
 const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
+myWorker.reciveData('Log', (msg) => { console.log(`[MyWorkerScript]${msg}`); });
 // myWorker.reciveData('predict_res', (content) => { console.log(`输出长度:${content.length},${content[0].length},${content[0][0].length}`) });
 myWorker.reciveData('pinyinArray', (pinyinArray) => { console.log(pinyinArray) });
 myWorker.reciveData('Event', (content) => {
     switch (content) {
         case 'created':
+            console.log('myWorkerScript Created!');
             myWorker.sendData('initInfo', {
                 sampleRate, fft_s, hop_s, numberOfChannels: 1, max_duration: 3
             });
             break;
         case 'inited':
+            console.log('myWorkerScript Inited!');
             switch_btn.textContent = "Start";
             switch_btn.disabled = false;
             break;
@@ -110,29 +113,29 @@ const audioProcesser = new AudioFlowProcesser(
     undefined,
     256,
     1,
-    (audioData) => {
-        audioContainer.updateAudioDataClip(audioData);
+    (audioData_Clip) => {
+        audioContainer.updateAudioDataClip(audioData_Clip);
         const cur_full_audioData = audioContainer.getAudioData();
         waveDrawer.set_data(cur_full_audioData);
 
-        const stftData = AudioUtils.getAudioClipStftData(cur_full_audioData, audioData.channels[0].length, audioContainer.fft_n, audioContainer.hop_n);
-        audioContainer.updateStftDataClip(stftData);
+        const stftData_Clip = AudioUtils.getAudioClipStftData(cur_full_audioData, audioData_Clip.channels[0].length, audioContainer.fft_n, audioContainer.hop_n);
+        audioContainer.updateStftDataClip(stftData_Clip);
         stftDrawer.set_data(audioContainer.getStftData());
 
         myWorker.sendData(
             'stftData',
             {
-                sampleRate: stftData.sampleRate,
-                fft_n: stftData.fft_n,
-                hop_n: stftData.hop_n,
+                sampleRate: stftData_Clip.sampleRate,
+                fft_n: stftData_Clip.fft_n,
+                hop_n: stftData_Clip.hop_n,
                 stft: {
-                    stftMartrixArrayBuffer: stftData.stft._arrayBuffer,
-                    stftMartrixHeight: stftData.stft.height,
-                    stftMartrixWidth: stftData.stft.width,
+                    stftMartrixArrayBuffer: stftData_Clip.stft._arrayBuffer,
+                    stftMartrixHeight: stftData_Clip.stft.height,
+                    stftMartrixWidth: stftData_Clip.stft.width,
                 },
-                audioTime: stftData.audioTime,
+                audioTime: stftData_Clip.audioTime,
             },
-            [stftData.stft._arrayBuffer]
+            [stftData_Clip.stft._arrayBuffer]
         );
     },
     null,
