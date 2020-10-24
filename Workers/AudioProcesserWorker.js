@@ -34,13 +34,9 @@ async function main() {
     const { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix } = await init_import();
     const pinyin = await prepare_pinyin();
     const myWorkerScript = new MyWorkerScript(self);
-    function log(msg) {
-        // console.log(`[MyWorkerScript]${msg}`);
-        myWorkerScript.sendData('Log', msg);
-    };
     myWorkerScript.reciveData('initInfo',
         async (dataContent) => {
-            log(`收到initInfo,准备初始化audioContainer`);
+            myWorkerScript.log(`收到initInfo,准备初始化audioContainer`);
             self.audioContainer = new AudioContainer(
                 dataContent.sampleRate,
                 dataContent.fft_s,
@@ -48,11 +44,11 @@ async function main() {
                 dataContent.numberOfChannels,
                 dataContent.max_duration,
                 false);
-            log(`准备加载model...`);
+            myWorkerScript.log(`准备加载model...`);
             self.model = await init_model();
             const len = Math.round(self.audioContainer.max_duration / self.audioContainer.hop_s);
             self.model.predict(tf.zeros([1, len, 129]));
-            log(`当前tensorflowJS的Backend:${tf.getBackend()}`);
+            myWorkerScript.log(`当前tensorflowJS的Backend:${tf.getBackend()}`);
             myWorkerScript.sendData('Event', 'inited');
         }
     );
