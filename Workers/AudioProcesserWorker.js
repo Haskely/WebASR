@@ -17,9 +17,6 @@ importScripts("../tensorflowjs/tfjs@2.6.0.js");
 
 async function init_model() {
     const model = await tf.loadGraphModel('../tensorflowjs/tfjsModel/tfjs_savedModel/model.json');
-
-    // const len = Math.round(self.audioContainer.max_duration / self.audioContainer.hop_s);
-    // model.predict(tf.zeros([1, len, 129]));
     return model;
 };
 

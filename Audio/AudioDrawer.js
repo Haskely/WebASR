@@ -1,7 +1,7 @@
 import { Drawer } from '../Drawer/Drawer.js';
 
 class WaveDrawer extends Drawer {
-    constructor(id = 'audioWave', width = 1000, height = 100, total_duration = 10, show_time = true) {
+    constructor(id = 'audioWave', width = document.body.clientWidth * 0.8, height = 125, total_duration = 10, show_time = true) {
         super(id, width, height);
         this.total_duration = total_duration;
         this.show_time = show_time;
@@ -35,7 +35,7 @@ class WaveDrawer extends Drawer {
             for (let i = 0; i < audio_canvas_length; i += 1) {
                 const cur_x = i;
                 for (let cp = 0; cp < perpixel_n && cp < audio_pcm.length - i * perpixel_n; cp += 1) {
-                    const cur_w = sin_one(audio_pcm[i * perpixel_n + cp]);
+                    const cur_w = (audio_pcm[i * perpixel_n + cp]);
                     const cur_y = Math.round(cur_w * end_dy + end_y);
                     const cur_n = flatten_wave_imgArray_count[cur_x + cur_y * audio_canvas_length] + 1;
                     flatten_wave_imgArray_count[cur_x + cur_y * audio_canvas_length] = cur_n;
@@ -79,16 +79,16 @@ class WaveDrawer extends Drawer {
 
 function sin_one(x) {
     return Math.sin(x * Math.PI / 2);
-}
+};
 
 function circle_one(x) {
     if (x >= 0) return Math.sqrt(x * (2 - x));
     else return -Math.sqrt(-x * (2 - x));
-}
+};
 
 
 class StftDrawer extends Drawer {
-    constructor(id = 'audioStft', width = 1000, height = null, total_duration = 10, show_time = true) {
+    constructor(id = 'audioStft', width = document.body.clientWidth * 0.8, height = null, total_duration = 10, show_time = true) {
         super(id, width, height);
         this.total_duration = total_duration;
         this.adaptive_height = (!height);

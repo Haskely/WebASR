@@ -1,5 +1,5 @@
 class Drawer {
-    constructor(id = 'canvas', width = 600, height = 400) {
+    constructor(id = 'canvas', width = document.body.clientWidth * 0.8, height = 400) {
 
         this.canvas = document.querySelector(`canvas#${id}`);
         if (!this.canvas) {

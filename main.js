@@ -7,16 +7,16 @@ import { MyWorker } from './Workers/MyWorker.js';
 // 添加页面元素
 $('body').append(`
     <div>
-        <input type="file" id="audio_input" accept="audio/*" capture="microphone"/>
+        <input type="file" id="audio_input" accept=".wav, .mp3, .flac, .aac, .m4a, .opus, .ogg" capture="microphone"/>
         <button id="record_btn" >Record</button>
     </div>`
 ); const audio_input = document.querySelector('#audio_input'); const record_btn = document.querySelector('#record_btn');
 $('body').append(`<div id='audios'></div>`); const audios_div = document.querySelector('#audios');
 
-const waveDrawer = new WaveDrawer('audioWave', 1000, 125);
-const stftDrawer = new StftDrawer('audioStft', 1000, null);
-
+const waveDrawer = new WaveDrawer('audioWave');
+const stftDrawer = new StftDrawer('audioStft');
 $('body').append(`<button id='switch_btn'></button>`); const switch_btn = document.querySelector('#switch_btn');
+$('body').append(`<button id='open_model_btn'></button>`); const open_model_btn = document.querySelector('#open_model_btn');
 // 元素添加完毕
 
 // 设置页面元素事件
@@ -60,9 +60,8 @@ record_btn.onclick = async (e) => {
     };
 };
 
-switch_btn.disabled = true;
-switch_btn.textContent = "Loading..."
-switch_btn.onclick = async function (e) {
+switch_btn.textContent = "Start";
+switch_btn.onclick = function (e) {
     if (audioProcesser.isRunning()) {
         audioProcesser.stop();
         e.target.textContent = "Start";
@@ -71,6 +70,19 @@ switch_btn.onclick = async function (e) {
         e.target.textContent = "Stop";
     };
 
+};
+
+let is_open_model = false;
+open_model_btn.disabled = true;
+open_model_btn.textContent = "ModelLoading...";
+open_model_btn.onclick = function (e) {
+    if (is_open_model) {
+        is_open_model = false;
+        e.target.textContent = "OpenModel";
+    } else {
+        is_open_model = true;
+        e.target.textContent = "StopModel";
+    };
 };
 
 
@@ -95,8 +107,8 @@ myWorker.reciveData('Event', (content) => {
             break;
         case 'inited':
             console.log('myWorkerScript Inited!');
-            switch_btn.textContent = "Start";
-            switch_btn.disabled = false;
+            open_model_btn.textContent = "OpenModel";
+            open_model_btn.disabled = false;
             break;
         default:
             console.error(`[MainThread]收到未知Event:${content}`);
@@ -109,7 +121,7 @@ const audioProcesser = new AudioFlowProcesser(
     'sound',
     sampleRate,
     undefined,
-    256,
+    512,
     1,
     (audioData_Clip) => {
         audioContainer.updateAudioDataClip(audioData_Clip);
@@ -120,21 +132,23 @@ const audioProcesser = new AudioFlowProcesser(
         audioContainer.updateStftDataClip(stftData_Clip);
         stftDrawer.set_data(audioContainer.getStftData());
 
-        myWorker.sendData(
-            'stftData',
-            {
-                sampleRate: stftData_Clip.sampleRate,
-                fft_n: stftData_Clip.fft_n,
-                hop_n: stftData_Clip.hop_n,
-                stft: {
-                    stftMartrixArrayBuffer: stftData_Clip.stft._arrayBuffer,
-                    stftMartrixHeight: stftData_Clip.stft.height,
-                    stftMartrixWidth: stftData_Clip.stft.width,
+        if (is_open_model) {
+            myWorker.sendData(
+                'stftData',
+                {
+                    sampleRate: stftData_Clip.sampleRate,
+                    fft_n: stftData_Clip.fft_n,
+                    hop_n: stftData_Clip.hop_n,
+                    stft: {
+                        stftMartrixArrayBuffer: stftData_Clip.stft._arrayBuffer,
+                        stftMartrixHeight: stftData_Clip.stft.height,
+                        stftMartrixWidth: stftData_Clip.stft.width,
+                    },
+                    audioTime: stftData_Clip.audioTime,
                 },
-                audioTime: stftData_Clip.audioTime,
-            },
-            [stftData_Clip.stft._arrayBuffer]
-        );
+                [stftData_Clip.stft._arrayBuffer]
+            );
+        };
     },
     null,
 );
