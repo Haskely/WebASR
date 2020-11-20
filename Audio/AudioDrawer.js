@@ -1,15 +1,94 @@
 import { Drawer } from '../Drawer/Drawer.js';
+import { AudioData, StftData, StftDataCyclicContainer } from './AudioContainer.js';
+import { CyclicImageData, Float32Matrix } from '../utils/CyclicContainer.js';
+
+/*ToDo:
+    流程标准化，将每一个data update都直接生成合适大小的
+*/
+
+
+const TIME_AREA_H = 20;
 
 class WaveDrawer extends Drawer {
-    constructor(id = 'audioWave', width = document.body.clientWidth * 0.8, height = 125, total_duration = 10, show_time = true) {
+    constructor(id = 'audioWave',
+        width = document.body.clientWidth * 0.8,
+        height = 125,
+        sampleRate = 8000,
+        total_duration = 10,
+        show_time = true,
+    ) {
         super(id, width, height);
+        this.sampleRate = sampleRate;
         this.total_duration = total_duration;
         this.show_time = show_time;
+
+        this.sample_n_per_pixel = Math.round(this.total_duration * this.sampleRate / this.canvas.width);
+        this.leftedAudioData = new AudioData(0, [[]], 0); // 生成一个空的AudioData对象
+        this.wave_area_length = this.canvas.height - TIME_AREA_H;
+
+        this.cyclicImageData = new CyclicImageData(this.wave_area_length, this.canvas.width)
+    };
+
+    audioData2imageData = (audioData) => {
+        const wave_image_length = Math.floor((audioData.sampleLength + this.leftedAudioData.sampleLength) / this.sample_n_per_pixel);
+        const wave_imgMatrix_count = new Float32Matrix(wave_image_length, this.wave_area_length);
+        const per_wave_len = this.wave_area_length / audioData.channels.length;
+        let row_i = 0;
+        let each_pixel_sampleGroup_begin = 0;
+        let each_imgMatrix_countRow_begin_i = 0;
+
+        for (let k = 0; k < this.leftedAudioData.sampleLength; k++) {
+            for (let chN = 0; chN < this.leftedAudioData.channels.length; chN++) {
+                const cur_colI = Math.round((audioData.channels[chN][k] * 0.5 + 0.5 + chN) * per_wave_len);
+                wave_imgMatrix_count.typedArrayView[cur_colI] += 1;
+            };
+        };
+        const nf_left = this.sample_n_per_pixel - this.leftedAudioData.sampleLength;
+        for (let k = 0; k < nf_left; k++) {
+            for (let chN = 0; chN < audioData.channels.length; chN++) {
+                const cur_colI = Math.round((audioData.channels[chN][k] * 0.5 + 0.5 + chN) * per_wave_len);
+                wave_imgMatrix_count.typedArrayView[cur_colI] += 1;
+            };
+        };
+        row_i += 1;
+        each_pixel_sampleGroup_begin = this.sample_n_per_pixel - this.leftedAudioData.sampleLength;
+        each_imgMatrix_countRow_begin_i += this.wave_area_length;
+        while (row_i < wave_image_length) {
+            for (let k = each_pixel_sampleGroup_begin; k < each_pixel_sampleGroup_begin + this.sample_n_per_pixel; k++) {
+                for (let chN = 0; chN < audioData.channels.length; chN++) {
+                    const cur_colI = Math.round((audioData.channels[chN][k] * 0.5 + 0.5 + chN) * per_wave_len);
+                    wave_imgMatrix_count.typedArrayView[each_imgMatrix_countRow_begin_i + cur_colI] += 1;
+                };
+            };
+            each_pixel_sampleGroup_begin += this.sample_n_per_pixel;
+            each_imgMatrix_countRow_begin_i += this.wave_area_length;
+            row_i += 1;
+        };
+
+        this.leftedAudioData = new AudioData(
+            audioData.sampleRate,
+            audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
+            audioData.audioTime
+        );
+
+        const imageData = new ImageData(this.wave_area_length, wave_image_length);
+        for (let i = 0; i < wave_imgMatrix_count.typedArrayView.length; i += 1) {
+            const p = i * 4;
+            const cur_pixel = circle_one(wave_imgMatrix_count.typedArrayView[i] / this.sample_n_per_pixel);
+
+            imageData.data[p + 0] = 255 * cur_pixel; // R value
+            imageData.data[p + 1] = 255 * cur_pixel; // G value
+            imageData.data[p + 2] = 255 * cur_pixel; // B value
+            imageData.data[p + 3] = 255; // A value
+        };
+
+        return imageData;
+
     };
 
     /**
      * 
-     * @param {Object} data 具有如下格式的对象：
+     * @param {AudioData} data 具有如下格式的对象：
      *                      {
      *                          sampleRate: Number, 音频采样率，单位Hz
      *                          channels: Array[Float32Array], 数组，每个元素代表一个通道，
@@ -19,54 +98,32 @@ class WaveDrawer extends Drawer {
      *                          timeStamp: Date.now(), 音频末尾时间
      *                      }
      */
-    draw = async (data) => {
+    updateAudioData = (audioData) => {
+        this.cyclicImageData.update(this.audioData2imageData(audioData));
+        this.setData(
+            {
+                cyclicImageData: this.cyclicImageData,
+                audioTime: audioData.audioTime,
+            }
+        );
+    };
+
+    draw = async ({ cyclicImageData, audioTime }) => {
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const perpixel_n = Math.round(this.total_duration * data.sampleRate / this.canvas.width);
-        const audio_canvas_length = Math.ceil(data.channels[0].length / perpixel_n);
-        const wave_area_height = this.show_time ? this.canvas.height - 20 : this.canvas.height;
-        const end_dy = wave_area_height / (data.channels.length * 2);
-
-
-        const flatten_wave_imgArray_count = new Float32Array(audio_canvas_length * wave_area_height);
-        let max_count = 0;
-        for (let ch_n = 0; ch_n < data.channels.length; ch_n += 1) {
-            let audio_pcm = data.channels[ch_n];
-            let end_y = end_dy * (ch_n * 2 + 1);
-            for (let i = 0; i < audio_canvas_length; i += 1) {
-                const cur_x = i;
-                for (let cp = 0; cp < perpixel_n && cp < audio_pcm.length - i * perpixel_n; cp += 1) {
-                    const cur_w = (audio_pcm[i * perpixel_n + cp]);
-                    const cur_y = Math.round(cur_w * end_dy + end_y);
-                    const cur_n = flatten_wave_imgArray_count[cur_x + cur_y * audio_canvas_length] + 1;
-                    flatten_wave_imgArray_count[cur_x + cur_y * audio_canvas_length] = cur_n;
-                    if (cur_n > max_count) max_count = cur_n;
-                };
-            };
-        };
-        const imageData = this.canvas_ctx.createImageData(audio_canvas_length, wave_area_height);
-        for (let i = 0; i < flatten_wave_imgArray_count.length; i += 1) {
-            const p = i * 4;
-            // const cur_pixel = flatten_wave_imgArray_count[i] ? 0.5 + flatten_wave_imgArray_count[i] * 0.5 / max_count : 0;
-
-            const cur_pixel = flatten_wave_imgArray_count[i] ? circle_one(flatten_wave_imgArray_count[i] / max_count) : 0;
-            // const cur_pixel = flatten_wave_imgArray_count[i] ? 1 : 0;
-
-            imageData.data[p + 0] = 255 * cur_pixel; // R value
-            imageData.data[p + 1] = 255 * cur_pixel; // G value
-            imageData.data[p + 2] = 255 * cur_pixel; // B value
-            imageData.data[p + 3] = 255; // A value
-        };
-        this.canvas_ctx.putImageData(imageData, this.canvas.width - audio_canvas_length, 0);
+        const imageData = cyclicImageData.toImageDataT();
+        this.canvas_ctx.putImageData(imageData,
+            this.canvas.width - imageData.width, 0,
+        );
 
         if (this.show_time) {
-            const end_time = data.audioTime;
+            const end_time = audioTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
 
             const s_y = this.canvas.height - 20, e_y = this.canvas.height - 10;
 
-            for (let i = 1; time_dx * i <= Math.min(this.canvas.width, audio_canvas_length); i += 1) {
+            for (let i = 1; time_dx * i <= imageData.width; i += 1) {
                 this.canvas_ctx.moveTo(this.canvas.width - time_dx * i, s_y);
                 this.canvas_ctx.lineTo(this.canvas.width - time_dx * i, e_y);
                 this.canvas_ctx.fillText((end_time - dt * i).toFixed(3).toString(), this.canvas.width - time_dx * (i + 0.5), this.canvas.height);
@@ -86,14 +143,33 @@ function circle_one(x) {
     else return -Math.sqrt(-x * (2 - x));
 };
 
-
 class StftDrawer extends Drawer {
-    constructor(id = 'audioStft', width = document.body.clientWidth * 0.8, height = null, total_duration = 10, show_time = true) {
+    constructor(
+        id = 'audioStft',
+        width = document.body.clientWidth * 0.8,
+        height = null,
+        fft_n = 256,
+        hop_n = 64,
+        sampleRate = 8000,
+        total_duration = 10,
+        show_time = true) {
+        const time_area_h = show_time ? TIME_AREA_H : 0;
+        const stftFrequencyN = (fft_n / 2 + 1);
+        if (!height) {
+            width = Math.round(width);
+            height = Math.round(width * stftFrequencyN * hop_n / (total_duration * sampleRate)) + time_area_h;
+        };
         super(id, width, height);
+        this.fft_n = fft_n;
+        this.hop_n = hop_n;
+        this.sampleRate = sampleRate;
         this.total_duration = total_duration;
-        this.adaptive_height = (!height);
-
         this.show_time = show_time;
+        this.stftAreaHeight = this.canvas.height - time_area_h;
+        this.cyclicImageData = new CyclicImageData(stftFrequencyN, Math.ceil(total_duration * sampleRate / hop_n));
+    };
+
+    _check_stftData(stftData) {
 
     };
 
@@ -108,45 +184,41 @@ class StftDrawer extends Drawer {
      *                          stft: Float32Matrix, stft数据
      *                      }
      */
-    draw = async (stftData) => {
-        this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const stft_time_n = stftData.stft.height;
-        const stft_frequency_n = stftData.stft.width;
+    updateStftData = (stftData) => {
+        // this._check_stftData(stftData);
 
-        const time_area_h = this.show_time ? 20 : 0;
-        if (this.adaptive_height) {
-            this.canvas.height = time_area_h + this.canvas.width * stft_frequency_n * stftData.hop_n / (this.total_duration * stftData.sampleRate);
-            this.adaptive_height = false;
-        };
+        // const pad_n = stftData.fft_n / stftData.hop_n + 1;
+        // const half_pad_n = Math.round(pad_n / 2);
+        // const padded_time_n = Math.round(stft_time_n + pad_n);
 
-        const pad_n = stftData.fft_n / stftData.hop_n + 1;
-        const padded_time_n = Math.round(stft_time_n + pad_n);
-        const half_pad_n = Math.round(pad_n / 2);
-        const flattened_stft_array = new Float32Array(padded_time_n * stft_frequency_n);
-        let max_x = flattened_stft_array[0];
-        let min_x = flattened_stft_array[0];
-        for (let i = 0; i < stft_frequency_n; i += 1) {
-            for (let j = 0; j < stft_time_n; j += 1) {
-                flattened_stft_array[i * padded_time_n + j + half_pad_n] = stftData.stft.get(j, i);
-                if (stftData.stft.get(j, i) > max_x) {
-                    max_x = stftData.stft.get(j, i);
-                } else if (stftData.stft.get(j, i) < min_x) {
-                    min_x = stftData.stft.get(j, i);
-                };
-            };
+        let max_value = stftData.stft.typedArrayView[0];
+        for (let i = 1; i < stftData.stft.typedArrayView.length; i += 1) {
+            const cur_value = stftData.stft.typedArrayView[i];
+            if (max_value < cur_value) max_value = cur_value;
         };
-        const jc = max_x - min_x;
-        const imageData = this.canvas_ctx.createImageData(padded_time_n, stft_frequency_n);
+        const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
         for (let p = 0; p * 4 < imageData.data.length; p += 1) {
             const i = p * 4;
-            const onescaled_stft_point = (flattened_stft_array[p] - min_x) / jc;
+            const onescaled_stft_point = stftData.stft.typedArrayView[p] / max_value;
             imageData.data[i + 0] = onescaled_stft_point * 255; // R value
             imageData.data[i + 1] = onescaled_stft_point * 255; // G value
             imageData.data[i + 2] = onescaled_stft_point * 255; // B value
             imageData.data[i + 3] = 255; // A value
         };
 
-        const new_height = this.canvas.height - time_area_h;
+        this.cyclicImageData.update(imageData);
+        this.setData({
+            cyclicImageData: this.cyclicImageData,
+            audioTime: stftData.audioTime,
+        });
+    };
+
+
+
+    draw = async ({ cyclicImageData, audioTime }) => {
+        const imageData = cyclicImageData.toImageDataT();
+        this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const new_height = this.stftAreaHeight;
         const new_width = imageData.width * new_height / imageData.height;
         const imageBitmap = await createImageBitmap(imageData);
         this.canvas_ctx.drawImage(imageBitmap,
@@ -155,7 +227,105 @@ class StftDrawer extends Drawer {
         );
         // this.canvas.width - new_width
         if (this.show_time) {
-            const end_time = stftData.audioTime;
+            const end_time = audioTime;
+            this.canvas_ctx.beginPath();
+            const dt = 0.5;
+            const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
+            const stft_canvas_length = new_width;
+            const s_y = this.canvas.height - 20, e_y = this.canvas.height - 10;
+
+            for (let i = 1; time_dx * i <= stft_canvas_length; i += 1) {
+                this.canvas_ctx.moveTo(this.canvas.width - time_dx * i, s_y);
+                this.canvas_ctx.lineTo(this.canvas.width - time_dx * i, e_y);
+                this.canvas_ctx.fillText((end_time - dt * i).toFixed(3).toString(), this.canvas.width - time_dx * (i + 0.5), this.canvas.height);
+            };
+            this.canvas_ctx.stroke();
+            this.canvas_ctx.closePath();
+        };
+    };
+};
+
+class StftDrawer2 extends Drawer {
+    constructor(id = 'audioStft', width = document.body.clientWidth * 0.8, height = null, total_duration = 10, show_time = true) {
+        super(id, width, height);
+        this.total_duration = total_duration;
+
+        this.show_time = show_time;
+
+        this._inited = false;
+
+    };
+
+    _init_stftData = (stftData) => {
+        if (!this._inited) {
+            const time_area_h = this.show_time ? TIME_AREA_H : 0;
+            if (!this.canvas.height) {
+                this.stftAreaHeight = Math.round(this.canvas.width * stftData.stft.columnsN * stftData.hop_n / (this.total_duration * stftData.sampleRate));
+                this.canvas.height = this.stftAreaHeight + time_area_h;
+            } else {
+                this.stftAreaHeight = this.canvas.height - time_area_h;
+            }
+            this.cyclicImageData = new CyclicImageData(stftData.stft.columnsN, Math.round(this.total_duration * stftData.sampleRate / stftData.hop_n));
+            this._inited = true;
+        };
+    };
+
+    /**
+     * 
+     * @param {StftData} stftData 具有如下格式的对象：
+     *                      {
+     *                          audioTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
+     *                          sampleRate:  Number, 音频采样率，单位赫兹（Hz）
+     *                          fft_n: 256, 傅里叶变换窗口，单位为采样点个数（1）
+     *                          hop_n: 64, 窗之间间隔长，单位为采样点个数（1）
+     *                          stft: Float32Matrix, stft数据
+     *                      }
+     */
+    updateStftData = (stftData) => {
+        this._init_stftData(stftData);
+
+        // const pad_n = stftData.fft_n / stftData.hop_n + 1;
+        // const half_pad_n = Math.round(pad_n / 2);
+        // const padded_time_n = Math.round(stft_time_n + pad_n);
+
+        let max_value = stftData.stft.typedArrayView[0];
+        for (let i = 1; i < stftData.stft.typedArrayView.length; i += 1) {
+            const cur_value = stftData.stft.typedArrayView[i];
+            if (max_value < cur_value) max_value = cur_value;
+        };
+        const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
+        for (let p = 0; p * 4 < imageData.data.length; p += 1) {
+            const i = p * 4;
+            const onescaled_stft_point = stftData.stft.typedArrayView[p] / max_value;
+            imageData.data[i + 0] = onescaled_stft_point * 255; // R value
+            imageData.data[i + 1] = onescaled_stft_point * 255; // G value
+            imageData.data[i + 2] = onescaled_stft_point * 255; // B value
+            imageData.data[i + 3] = 255; // A value
+        };
+
+        this.cyclicImageData.update(imageData);
+        this.setData({
+            cyclicImageData: this.cyclicImageData,
+            audioTime: stftData.audioTime,
+        });
+    };
+
+
+
+    draw = async ({ cyclicImageData, audioTime }) => {
+        const imageData = cyclicImageData.toImageDataT();
+        this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const new_height = this.stftAreaHeight;
+        const new_width = Math.round(imageData.width * new_height / imageData.height);
+        if (new_width) {
+            const scaled_imageData = scaleImageData(imageData, new_width, new_height);
+            this.canvas_ctx.putImageData(scaled_imageData,
+                this.canvas.width - new_width, 0);
+        };
+
+        // this.canvas.width - new_width
+        if (this.show_time) {
+            const end_time = audioTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
@@ -173,4 +343,123 @@ class StftDrawer extends Drawer {
     };
 };
 
-export { WaveDrawer, StftDrawer }
+class StftDrawer3 extends Drawer {
+    constructor(id = 'audioStft', width = document.body.clientWidth * 0.8, height = null, total_duration = 10, show_time = true) {
+        super(id, width, height);
+        this.total_duration = total_duration;
+
+        this.show_time = show_time;
+
+        this._inited = false;
+
+    };
+
+    _init_stftData = (stftData) => {
+        if (!this._inited) {
+            const time_area_h = this.show_time ? TIME_AREA_H : 0;
+            if (!this.canvas.height) {
+                this.stftAreaHeight = Math.round(this.canvas.width * stftData.stft.columnsN * stftData.hop_n / (this.total_duration * stftData.sampleRate));
+                this.canvas.height = this.stftAreaHeight + time_area_h;
+            } else {
+                this.stftAreaHeight = this.canvas.height - time_area_h;
+            }
+            this.stftDataCyclicContainer = new StftDataCyclicContainer(stftData.sampleRate, stftData.fft_n, stftData.hop_n, this.total_duration);
+            this._inited = true;
+        };
+    };
+
+    /**
+     * 
+     * @param {StftData} stftData 具有如下格式的对象：
+     *                      {
+     *                          audioTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
+     *                          sampleRate:  Number, 音频采样率，单位赫兹（Hz）
+     *                          fft_n: 256, 傅里叶变换窗口，单位为采样点个数（1）
+     *                          hop_n: 64, 窗之间间隔长，单位为采样点个数（1）
+     *                          stft: Float32Matrix, stft数据
+     *                      }
+     */
+    updateStftData = (stftData_clip) => {
+        this._init_stftData(stftData_clip);
+        this.stftDataCyclicContainer.updatedata(stftData_clip);
+        const stftData = this.stftDataCyclicContainer.getdata();
+        // const pad_n = stftData.fft_n / stftData.hop_n + 1;
+        // const half_pad_n = Math.round(pad_n / 2);
+        // const padded_time_n = Math.round(stft_time_n + pad_n);
+
+        let max_value = stftData.stft.typedArrayView[0];
+        for (let i = 1; i < stftData.stft.typedArrayView.length; i += 1) {
+            const cur_value = stftData.stft.typedArrayView[i];
+            if (max_value < cur_value) max_value = cur_value;
+        };
+        const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
+        for (let p = 0; p * 4 < imageData.data.length; p += 1) {
+            const i = p * 4;
+            const onescaled_stft_point = stftData.stft.typedArrayView[p] / max_value;
+            imageData.data[i + 0] = onescaled_stft_point * 255; // R value
+            imageData.data[i + 1] = onescaled_stft_point * 255; // G value
+            imageData.data[i + 2] = onescaled_stft_point * 255; // B value
+            imageData.data[i + 3] = 255; // A value
+        };
+
+        const imageDataT = new ImageData(imageData.height, imageData.width);
+        const pixelLength = 4;
+        const thisData = imageData.data;
+        const newData = imageDataT.data;
+        const length = imageDataT.data.length; // length == this.length
+        const perColumnLength = imageDataT.width * pixelLength;
+        let containerIndex = 0;
+        let curColumnI = 0;
+        let dataIndex;
+        while (curColumnI < perColumnLength) {
+            dataIndex = curColumnI;
+            while (dataIndex < length) {
+                newData[dataIndex + 0] = thisData[containerIndex + 0];
+                newData[dataIndex + 1] = thisData[containerIndex + 1];
+                newData[dataIndex + 2] = thisData[containerIndex + 2];
+                newData[dataIndex + 3] = thisData[containerIndex + 3];
+                dataIndex += perColumnLength;
+                containerIndex += pixelLength;
+            };
+            curColumnI += pixelLength;
+        };
+
+        this.setData({
+            imageData: imageDataT,
+            audioTime: stftData.audioTime,
+        });
+    };
+
+
+
+    draw = async ({ imageData, audioTime }) => {
+
+        this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const new_height = this.stftAreaHeight;
+        const new_width = imageData.width * new_height / imageData.height;
+        const imageBitmap = await createImageBitmap(imageData);
+        this.canvas_ctx.drawImage(imageBitmap,
+            this.canvas.width - new_width, 0,
+            new_width, new_height,
+        );
+        // this.canvas.width - new_width
+        if (this.show_time) {
+            const end_time = audioTime;
+            this.canvas_ctx.beginPath();
+            const dt = 0.5;
+            const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
+            const stft_canvas_length = new_width;
+            const s_y = this.canvas.height - 20, e_y = this.canvas.height - 10;
+
+            for (let i = 1; time_dx * i <= Math.min(this.canvas.width, stft_canvas_length); i += 1) {
+                this.canvas_ctx.moveTo(this.canvas.width - time_dx * i, s_y);
+                this.canvas_ctx.lineTo(this.canvas.width - time_dx * i, e_y);
+                this.canvas_ctx.fillText((end_time - dt * i).toFixed(3).toString(), this.canvas.width - time_dx * (i + 0.5), this.canvas.height);
+            };
+            this.canvas_ctx.stroke();
+            this.canvas_ctx.closePath();
+        };
+    };
+};
+
+export { WaveDrawer, StftDrawer };

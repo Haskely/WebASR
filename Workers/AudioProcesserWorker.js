@@ -1,19 +1,15 @@
 "use strict";
 
+importScripts("../tensorflowjs/tfjs@2.6.0.js");
+
 let model, audioContainer;
 async function init_import() {
     const { MyWorkerScript } = await import('../Workers/MyWorker.js');
     const { AudioContainer, AudioData, StftData } = await import('../Audio/AudioContainer.js');
     const { Float32Matrix } = await import('../utils/CyclicContainer.js');
 
-    return { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix }
+    return { MyWorkerScript, AudioContainer, AudioData, StftData, Float32Matrix };
 };
-
-
-importScripts("../tensorflowjs/tfjs@2.6.0.js");
-// importScripts("../Audio/AudioContainer.js");
-// importScripts("../utils/myWorker.js");
-// importScripts("../utils/CyclicContainer.js");
 
 async function init_model() {
     const model = await tf.loadGraphModel('../tensorflowjs/tfjsModel/tfjs_savedModel/model.json');

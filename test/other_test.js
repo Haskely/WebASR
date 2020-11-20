@@ -90,8 +90,6 @@ function iterate_buffer(buffer) {
     for (let dim = 0; dim < cur_pos.length; cur_pos[dim] += 1) {
         // do curpos
         console.log(buffer.get(...cur_pos));
-
-
         for (dim = 0; dim < cur_pos.length && cur_pos[dim] >= buffer.shape[dim] - 1; dim += 1) {
             cur_pos[dim] = 0;
         };
@@ -138,3 +136,34 @@ class B extends A {
 
 let b = new B();
 b.func2();
+
+function scaleImageData(originalImageData, targetWidth, targetHeight) {
+    const targetImageData = new ImageData(targetWidth, targetHeight);
+    const h1 = originalImageData.height;
+    const w1 = originalImageData.width;
+    const h2 = targetImageData.height;
+    const w2 = targetImageData.width;
+    const kh = h1 / h2;
+    const kw = w1 / w2;
+    for (let i2 = 0; i2 < h2; i2 += 1) {
+        for (let j2 = 0; j2 < w2; j2 += 1) {
+            let cur_img1pixel_sum = [0, 0, 0, 0];
+            let cur_img1pixel_n = 0;
+            for (let i1 = i2 * kh; i1 < (i2 + 1) * kh; i1 += 1) {
+                for (let j1 = j2 * kw; j1 < (j2 + 1) * kw; j1 += 1) {
+                    const cur_p = (i1 * w1 + j1) * 4;
+                    for (let k = 0; k < 4; k += 1) {
+                        cur_img1pixel_sum[k] = originalImageData.data[cur_p + k];
+                    };
+                    cur_img1pixel_n += 1;
+                };
+            };
+            const cur_p = (i2 * w2 + j2) * 4;
+            for (let k = 0; k < 4; k += 1) {
+                targetImageData.data[cur_p + k] = cur_img1pixel_sum[k] / cur_img1pixel_n;
+            };
+        };
+    };
+    return targetImageData;
+};
+

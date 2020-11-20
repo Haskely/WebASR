@@ -1,5 +1,5 @@
 "use strict";
-import { WaveDrawer, StftDrawer } from './Audio/AudioDrawer.js'
+import { WaveDrawer, StftDrawer as StftDrawer } from './Audio/AudioDrawer.js'
 import { AudioFlowProcesser } from './Audio/AudioFlowProcesser.js';
 import { AudioUtils } from './Audio/AudioUtils.js';
 import { AudioContainer } from './Audio/AudioContainer.js';
@@ -121,16 +121,18 @@ const audioProcesser = new AudioFlowProcesser(
     'sound',
     sampleRate,
     undefined,
-    512,
+    256,
     1,
     (audioData_Clip) => {
         audioContainer.updateAudioDataClip(audioData_Clip);
         const cur_full_audioData = audioContainer.getAudioData();
-        waveDrawer.set_data(cur_full_audioData);
+        // waveDrawer.set_data(cur_full_audioData);
+        waveDrawer.updateAudioData(audioData_Clip);
 
         const stftData_Clip = AudioUtils.getAudioClipStftData(cur_full_audioData, audioData_Clip.channels[0].length, audioContainer.fft_n, audioContainer.hop_n);
-        audioContainer.updateStftDataClip(stftData_Clip);
-        stftDrawer.set_data(audioContainer.getStftData());
+        // audioContainer.updateStftDataClip(stftData_Clip);
+        // stftDrawer.set_data(audioContainer.getStftData());
+        stftDrawer.updateStftData(stftData_Clip);
 
         if (is_open_model) {
             myWorker.sendData(
@@ -140,9 +142,9 @@ const audioProcesser = new AudioFlowProcesser(
                     fft_n: stftData_Clip.fft_n,
                     hop_n: stftData_Clip.hop_n,
                     stft: {
-                        stftMartrixArrayBuffer: stftData_Clip.stft._arrayBuffer,
-                        stftMartrixHeight: stftData_Clip.stft.height,
-                        stftMartrixWidth: stftData_Clip.stft.width,
+                        stftMartrixArrayBuffer: stftData_Clip.stft.arrayBuffer,
+                        stftMartrixHeight: stftData_Clip.stft.rowsN,
+                        stftMartrixWidth: stftData_Clip.stft.columnsN,
                     },
                     audioTime: stftData_Clip.audioTime,
                 },

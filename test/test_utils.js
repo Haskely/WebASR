@@ -4,8 +4,9 @@ const time_fn = (fn, ...args) => {
     const s_time = Date.now();
     const res = fn(...args);
     const e_time = Date.now();
-    console.log(`总耗时为: ${(e_time - s_time) * 0.001} s`);
-    return res;
+    const during_time = (e_time - s_time) * 0.001;
+    console.log(`总耗时为: ${during_time} s`);
+    return [during_time, res];
 };
 
 const make_fake_audioarray = (total_t = 10, samplerate = 8000) => {

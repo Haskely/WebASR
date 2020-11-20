@@ -1,35 +1,5 @@
-import { CyclicFloat32Array, CyclicFloat32NestedArray, CyclicFloat32Matrix, Float32Matrix } from '../utils/CyclicContainer.js';
+import { CyclicFloat32Array, CyclicFloat32Matrix, Float32Matrix } from '../utils/CyclicContainer.js';
 
-class AudioContainer {
-    constructor(sampleRate, fft_s, hop_s, numberOfChannels, max_duration, save_audio = true, save_stft = true) {
-        this.sampleRate = sampleRate;
-        this.fft_s = fft_s;
-        this.hop_s = hop_s;
-        this.fft_n = Math.ceil(fft_s * sampleRate);
-        this.hop_n = Math.ceil(hop_s * sampleRate);
-        this.numberOfChannels = numberOfChannels;
-        this.max_duration = max_duration;
-
-        if (save_audio) this.audioDataCyclicContainer = new AudioDataCyclicContainer(sampleRate, numberOfChannels, max_duration);
-        if (save_stft) this.stftDataCyclicContainer = new StftDataCyclicContainer(sampleRate, this.fft_n, this.hop_n, max_duration);
-    };
-
-    updateAudioDataClip(audioData) {
-        this.audioDataCyclicContainer.updatedata(audioData);
-    };
-
-    updateStftDataClip(stftData) {
-        this.stftDataCyclicContainer.updatedata(stftData);
-    };
-
-    getAudioData() {
-        return this.audioDataCyclicContainer.getdata();
-    };
-
-    getStftData() {
-        return this.stftDataCyclicContainer.getdata();
-    };
-};
 
 
 class AudioData {
@@ -43,6 +13,9 @@ class AudioData {
         this.sampleRate = sampleRate;
         this.channels = channels;
         this.audioTime = audioTime;
+
+        this.sampleLength = channels[0].length;
+        this.timeLength = this.sampleLength / this.sampleRate;
     };
 };
 
@@ -114,6 +87,7 @@ class AudioDataCyclicContainer {
         );
     };
 };
+
 class StftDataCyclicContainer {
     constructor(sampleRate, fft_n, hop_n, max_duration = 10) {
         this.sampleRate = sampleRate;
@@ -137,7 +111,7 @@ class StftDataCyclicContainer {
     };
 
     get timeLength() {
-        return this.stftCyclicMatrix.data_length * this.hop_n / this.sampleRate;
+        return this.stftCyclicMatrix.length * this.hop_n / this.sampleRate;
     };
 
     cleardata = () => {
@@ -151,7 +125,6 @@ class StftDataCyclicContainer {
 
 
     getdata = () => {
-        // const stftArray = this.stftCyclicMatrix.toArray();
         return new StftData(
             this.sampleRate,
             this.fft_n,
@@ -162,4 +135,34 @@ class StftDataCyclicContainer {
     };
 };
 
+class AudioContainer {
+    constructor(sampleRate, fft_s, hop_s, numberOfChannels, max_duration, save_audio = true, save_stft = true) {
+        this.sampleRate = sampleRate;
+        this.fft_s = fft_s;
+        this.hop_s = hop_s;
+        this.fft_n = Math.ceil(fft_s * sampleRate);
+        this.hop_n = Math.ceil(hop_s * sampleRate);
+        this.numberOfChannels = numberOfChannels;
+        this.max_duration = max_duration;
+
+        if (save_audio) this.audioDataCyclicContainer = new AudioDataCyclicContainer(sampleRate, numberOfChannels, max_duration);
+        if (save_stft) this.stftDataCyclicContainer = new StftDataCyclicContainer(sampleRate, this.fft_n, this.hop_n, max_duration);
+    };
+
+    updateAudioDataClip(audioData) {
+        this.audioDataCyclicContainer.updatedata(audioData);
+    };
+
+    updateStftDataClip(stftData) {
+        this.stftDataCyclicContainer.updatedata(stftData);
+    };
+
+    getAudioData() {
+        return this.audioDataCyclicContainer.getdata();
+    };
+
+    getStftData() {
+        return this.stftDataCyclicContainer.getdata();
+    };
+};
 export { AudioData, AudioDataCyclicContainer, StftData, StftDataCyclicContainer, AudioContainer }
