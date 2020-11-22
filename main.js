@@ -15,6 +15,7 @@ const audios_div = document.querySelector('#audios');
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008, numberOfChannels = 1, bufferSize = 256;
 // const waveDrawer = new WaveDrawer('audioWave', undefined, undefined, sampleRate);
 // const stftDrawer = new StftDrawer('audioStft', undefined, undefined, fft_s * sampleRate, hop_s * sampleRate, sampleRate);
+const pinyintext = document.querySelector('#pinyin');
 // $('body').append(`<button id='switch_btn'></button>`); 
 const switch_btn = document.querySelector('#switch_btn');
 // $('body').append(`<button id='open_model_btn'></button>`);
@@ -120,6 +121,9 @@ open_model_btn.onclick = function (e) {
         animate.setAttribute('repeatCount', 'indefinite');
         open_model_btn.querySelector('#center').appendChild(animate);
 
+        pinyintext.textContent = "";
+        full_pinyinArray = [];
+        last_py = null;
     };
 };
 
@@ -127,9 +131,19 @@ open_model_btn.onclick = function (e) {
 // 页面元素事件设置完毕
 
 // 设置音频处理流程
-
+let last_py = null;
+let full_pinyinArray = [];
 const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
-myWorker.reciveData('pinyinArray', (pinyinArray) => { console.log(pinyinArray) });
+myWorker.reciveData('pinyinArray', (pinyinArray) => {
+    for (let py of pinyinArray) {
+        if (py !== 'sil' && py !== last_py) {
+            full_pinyinArray.push(py);
+            last_py = py;
+            pinyintext.textContent += ` ${py}`;
+        };
+    };
+    console.log(pinyinArray);
+});
 myWorker.reciveData('Event', (content) => {
     switch (content) {
         case 'created':
