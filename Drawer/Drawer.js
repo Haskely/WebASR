@@ -9,7 +9,6 @@ class Drawer {
             this.canvas = document.querySelector(`#${id}`);
         };
         this.canvas_ctx = this.canvas.getContext('2d');
-
         this.data = null;
         this.next_data_ready = false;
         this.next_frame_ready = false;
@@ -109,4 +108,4 @@ function scaleImageData(originalImageData, targetWidth, targetHeight) {
     return targetImageData;
 };
 
-export { Drawer }
+export { Drawer };

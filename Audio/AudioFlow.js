@@ -87,17 +87,17 @@ class AudioFlow extends AudioFlowProcesser {
             this.hop_s = hop_s;
             this.fft_n = Math.round(fft_s * this.sampleRate);
             this.hop_n = Math.round(hop_s * this.sampleRate);
-            const stftPadN = this.fft_n - this.hop_n;
-            this.cacheAudioData4StftCyclicContainer = new AudioDataCyclicContainer(this.sampleRate, this.numberOfChannels, (this.options.ScriptNodeOptions.ScriptNode_bufferSize + this.fft_n + stftPadN) / this.sampleRate);
+            const stftoverflapN = this.fft_n - this.hop_n;
+            this.cacheAudioData4StftCyclicContainer = new AudioDataCyclicContainer(this.sampleRate, this.numberOfChannels, (this.options.ScriptNodeOptions.ScriptNode_bufferSize + this.fft_n + stftoverflapN) / this.sampleRate);
             this.reciveStftDataEvent = new MyEvent();
             this.reciveAudioDataEvent.addListener(
                 (audioData) => {
                     this.cacheAudioData4StftCyclicContainer.updatedata(audioData);
                     const cachedSampleLength = this.cacheAudioData4StftCyclicContainer.sampleLength;
-                    const curAudioLength = cachedSampleLength - (cachedSampleLength - stftPadN) % this.fft_n;
+                    const curAudioLength = cachedSampleLength - (cachedSampleLength - stftoverflapN) % this.fft_n;
                     if (curAudioLength >= this.fft_n) {
                         const cachedAudioData = this.cacheAudioData4StftCyclicContainer.getdata(0, curAudioLength);
-                        this.cacheAudioData4StftCyclicContainer.cleardata(curAudioLength - stftPadN);
+                        this.cacheAudioData4StftCyclicContainer.cleardata(curAudioLength - stftoverflapN);
                         const stftData = new StftData(
                             cachedAudioData.sampleRate,
                             this.fft_n,

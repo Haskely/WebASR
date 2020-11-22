@@ -1,26 +1,27 @@
 "use strict";
 import { AudioFlow } from './Audio/AudioFlow.js';
 import { MyWorker } from './Workers/MyWorker.js';
-// 添加页面元素
-// $('body').append(`
-//     <div>
-//         <input type="file" id="audio_input" accept=".wav, .mp3, .flac, .aac, .m4a, .opus, .ogg" capture="microphone" multiple="true"/>
-//         <button id="record_btn" >Record</button>
-//     </div>`
-// ); 
+//基础配置
+const sampleRate = 8000, numberOfChannels = 1, bufferSize = 256, fft_s = 0.032, hop_s = 0.008;
+/**
+ * sampleRate 音频采样率，每秒钟采样音频的次数。可设置为8000,16000,32000,48000
+ * numberOfChannels 音频声道数。可设置为1,2,3,4,5
+ * bufferSize 流式音频原子切片大小，单位是采样点。这样你的刷新帧率就是sampleRate/bufferSize。
+ * 
+ * fft_s 短时傅里叶变换的傅里叶窗长，单位为秒。
+ * hop_s 短时傅里叶变换的相邻窗的滑动长度，单位为秒。这样你的相邻窗口重叠长度就为 fft_s - hop_s 秒。
+ */
+//配置完毕
+
+// 获取页面元素
 const audio_input = document.querySelector('#audio_input');
-const audio_input_btn = document.querySelector('#audio_input_btn'); const record_btn = document.querySelector('#record_btn');
-// $('body').append(`<div id='audios'></div>`); 
+const audio_input_btn = document.querySelector('#audio_input_btn');
+const record_btn = document.querySelector('#record_btn');
 const audios_div = document.querySelector('#audios');
-const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008, numberOfChannels = 1, bufferSize = 256;
-// const waveDrawer = new WaveDrawer('audioWave', undefined, undefined, sampleRate);
-// const stftDrawer = new StftDrawer('audioStft', undefined, undefined, fft_s * sampleRate, hop_s * sampleRate, sampleRate);
 const pinyintext = document.querySelector('#pinyin');
-// $('body').append(`<button id='switch_btn'></button>`); 
 const switch_btn = document.querySelector('#switch_btn');
-// $('body').append(`<button id='open_model_btn'></button>`);
 const open_model_btn = document.querySelector('#open_model_btn');
-// 元素添加完毕
+// 元素获取完毕
 
 // 设置页面元素事件
 audio_input.onchange = async (e) => {
@@ -37,6 +38,7 @@ audio_input.onchange = async (e) => {
     };
 };
 audio_input_btn.onclick = () => {
+    //用audio_input_btn作为audio_input的马甲。
     audio_input.click();
 };
 
@@ -60,8 +62,8 @@ record_btn.onclick = async (e) => {
             rect.setAttribute('x', 412); rect.setAttribute('y', 412); rect.setAttribute('width', 200); rect.setAttribute('height', 200);
             record_btn.querySelector('svg').appendChild(rect);
         } else {
-            console.log('navigator.mediaDevices.getUserMedia not supported on your browser!');
-            e.target.textContent = 'NotSupported!'
+            console.log('navigator.mediaDevices.getUserMedia not supported on your browser! 所以你的浏览器没法录音。');
+            record_btn.querySelector('#center').setAttribute('fill', 'gray');
             e.target.disabled = true;
         };
     } else {
@@ -79,7 +81,6 @@ record_btn.onclick = async (e) => {
     };
 };
 
-// switch_btn.textContent = "Start";
 switch_btn.onclick = function (e) {
     if (audioFlow.isRunning()) {
         audioFlow.stop();
@@ -126,11 +127,16 @@ open_model_btn.onclick = function (e) {
         last_py = null;
     };
 };
-
-
 // 页面元素事件设置完毕
 
+
 // 设置音频处理流程
+const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
+audioFlow.open();
+audioFlow.openStft(fft_s, hop_s, 10);
+audioFlow.openWaveDraw('waveDrawer', undefined, undefined, 10, false);
+audioFlow.openStftDraw('stftDrawer', undefined, undefined, 10, false);
+
 let last_py = null;
 let full_pinyinArray = [];
 const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
@@ -163,11 +169,6 @@ myWorker.reciveData('Event', (content) => {
     };
 });
 
-const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
-audioFlow.open();
-audioFlow.openStft(fft_s, hop_s, 10);
-audioFlow.openWaveDraw('waveDrawer', undefined, undefined, 10, false);
-audioFlow.openStftDraw('stftDrawer', undefined, undefined, 10, false);
 audioFlow.reciveStftDataEvent.addListener(
     (stftData) => {
         const stftData_Clip = stftData;
@@ -190,47 +191,3 @@ audioFlow.reciveStftDataEvent.addListener(
         };
     },
     'model');
-
-
-// const audioContainer = new AudioContainer(sampleRate, fft_s, hop_s, 1, 10);
-// const audioProcesser = new AudioFlowProcesser(
-//     null,
-//     'sound',
-//     sampleRate,
-//     undefined,
-//     256,
-//     1,
-//     (audioData_Clip) => {
-//         audioContainer.updateAudioDataClip(audioData_Clip);
-
-//         // waveDrawer.set_data(cur_full_audioData);
-//         waveDrawer.updateAudioData(audioData_Clip);
-//         const audioslicelength4stft = 2 * audioContainer.fft_n - audioContainer.hop_n;
-//         if (audioContainer.audioDataCyclicContainer.sampleLength < audioslicelength4stft) return;
-//         const cur_full_audioData = audioContainer.getAudioData();
-//         const stftData_Clip = AudioUtils.getAudioClipStftData(cur_full_audioData, audioslicelength4stft, audioContainer.fft_n, audioContainer.hop_n);
-//         // audioContainer.updateStftDataClip(stftData_Clip);
-//         // stftDrawer.set_data(audioContainer.getStftData());
-//         stftDrawer.updateStftData(stftData_Clip);
-
-//         if (is_open_model) {
-//             myWorker.sendData(
-//                 'stftData',
-//                 {
-//                     sampleRate: stftData_Clip.sampleRate,
-//                     fft_n: stftData_Clip.fft_n,
-//                     hop_n: stftData_Clip.hop_n,
-//                     stft: {
-//                         stftMartrixArrayBuffer: stftData_Clip.stft.arrayBuffer,
-//                         stftMartrixHeight: stftData_Clip.stft.rowsN,
-//                         stftMartrixWidth: stftData_Clip.stft.columnsN,
-//                     },
-//                     audioTime: stftData_Clip.audioTime,
-//                 },
-//                 [stftData_Clip.stft._arrayBuffer]
-//             );
-//         };
-//     },
-//     null,
-// );
-// audioProcesser.open();
