@@ -47,11 +47,12 @@ class AudioUtils {
 
     static getAudioClipStftData = (full_audioData, audio_cliplength, fft_n, hop_n) => {
         const cur_audio_slice4stft = AudioUtils.combine_channels(full_audioData.channels).slice(-(audio_cliplength + fft_n - hop_n));
+        const stftMatrix = AudioUtils.nj_stft(cur_audio_slice4stft, fft_n, hop_n);
         const stftData = new StftData(
             full_audioData.sampleRate,
             fft_n,
             hop_n,
-            AudioUtils.nj_stft(cur_audio_slice4stft, fft_n, hop_n),
+            stftMatrix,
             full_audioData.audioTime
         );
         return stftData;

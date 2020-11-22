@@ -1,78 +1,141 @@
-import { AudioDataCyclicContainer, Au, StftDataCyclicContainer } from './AudioContainer.js'
+import { AudioData, StftData, AudioDataCyclicContainer, StftDataCyclicContainer } from './AudioContainer.js';
 import { AudioFlowProcesser } from './AudioFlowProcesser.js';
 import { AudioUtils } from './AudioUtils.js';
 import { WaveDrawer, StftDrawer } from './AudioDrawer.js';
 
-class AudioFlow {
+class MyEvent {
+    constructor() {
+        this.Listeners = {};
+    };
+
+    trigger = (...args) => {
+        for (let listenerID in this.Listeners) {
+            this.Listeners[listenerID](...args);
+        };
+    };
+
+    hasListener = (listenerID = "", callbackfn = null) => {
+        if (!listenerID) listenerID = callbackfn.toString();
+        return (listenerID in this.Listeners);
+    };
+
+    addListener = (callbackfn, listenerID = "") => {
+        if (!listenerID) listenerID = callbackfn.toString();
+        let i = 1;
+        while (listenerID in this.Listeners) {
+            console.warn(`警告，listenerID:${listenerID}已经存在,将自动替换为:${listenerID}_${i}`)
+            listenerID = listenerID + `_${i}`;
+            i++;
+        };
+        this.Listeners[listenerID] = callbackfn;
+
+        return listenerID;
+    };
+
+    removeListener = (listenerID = "", callbackfn = null) => {
+        if (!listenerID) listenerID = callbackfn.toString();
+        delete this.Listeners[listenerID];
+    };
+};
+
+class AudioFlow extends AudioFlowProcesser {
     constructor(
         audioSource = null,
-        keeping_duration = 10,
         sampleRate = 8000,
         numberOfChannels = 1,
         ScriptNode_bufferSize = 256,
         audioDestination = 'sound',
     ) {
-
-        this.keeping_duration = keeping_duration;
-        this.sampleRate = sampleRate;
-        this.numberOfChannels = numberOfChannels;
-        this.ScriptNode_bufferSize = ScriptNode_bufferSize;
-        this.audioDestination = audioDestination;
-
-
-        this.audioDataCyclicContainer = new AudioDataCyclicContainer(sampleRate, numberOfChannels, keeping_duration);
-
-
-        this.audioFlowProcesser = new AudioFlowProcesser(
-            audioSource,
+        const reciveAudioDataEvent = new MyEvent();
+        super(audioSource,
             audioDestination,
             sampleRate,
             undefined,
             ScriptNode_bufferSize,
             numberOfChannels,
             (audioData) => {
-                this.audioDataCyclicContainer.updatedata(audioData);
-
-            },
-            null
-        );
+                reciveAudioDataEvent.trigger(audioData);
+            });
+        this.sampleRate = sampleRate;
+        this.numberOfChannels = numberOfChannels;
+        this.reciveAudioDataEvent = reciveAudioDataEvent;
 
     };
 
-    getAudioData() {
-        return this.audioDataCyclicContainer.getdata();
-    };
-
-    openWaveDraw(id = 'audioWave', width = 1000, height = 100) {
-        if (!this.waveDrawer) {
-            this.waveDrawer = WaveDrawer(id, width, height, this.keeping_duration, show_time = true);
-            this.onReciveAudioDate((audioData) => { this.waveDrawer.set_data() })
+    keepAudio = (
+        keeping_duration = 10,
+    ) => {
+        if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行openAudio。然而传入了${keeping_duration}`);
+        this.audioDataCyclicContainer = new AudioDataCyclicContainer(this.sampleRate, this.numberOfChannels, keeping_duration);
+        if (this.reciveAudioDataEvent.hasListener('keepAudio')) this.reciveAudioDataEvent.removeListener('keepAudio');
+        this.reciveAudioDataEvent.addListener((audioData) => { this.audioDataCyclicContainer.updatedata(audioData); }, 'keepAudio');
+        this.getAudioData = (startSample = undefined, endSample = undefined) => {
+            return this.audioDataCyclicContainer.getdata(startSample, endSample);
         };
     };
 
-    openStft(fft_s = 0.032, hop_s = 0.008) {
-        if (!this.stftDataCyclicContainer) {
+    openWaveDraw = (id = 'audioWave', width = undefined, height = undefined, total_duration = 10, show_time = undefined) => {
+        if (!this.reciveAudioDataEvent.hasListener('waveDrawer.updateAudioData')) {
+            this.waveDrawer = new WaveDrawer(id, width, height, this.sampleRate, this.numberOfChannels, total_duration, show_time);
+            this.reciveAudioDataEvent.addListener((audioData) => { this.waveDrawer.updateAudioData(audioData) }, 'waveDrawer.updateAudioData')
+        };
+    };
+
+    openStft = (fft_s = 0.032, hop_s = 0.008, keeping_duration = 10) => {
+        if (!this.reciveStftDataEvent) {
             this.fft_s = fft_s;
             this.hop_s = hop_s;
-            this.fft_n = Math.ceil(fft_s * sampleRate);
-            this.hop_n = Math.ceil(hop_s * sampleRate);
-            this.stftDataCyclicContainer = new StftDataCyclicContainer(this.sampleRate, this.fft_n, this.hop_n, this.keeping_duration);
-            this.onReciveAudioDate((audioData) => {
-                const stftData = AudioUtils.getAudioClipStftData(this.getAudioData(), audioData.channels[0].length, this.fft_n, this.hop_n);
-                this.stftDataCyclicContainer.updatedata(stftData);
-            });
+            this.fft_n = Math.round(fft_s * this.sampleRate);
+            this.hop_n = Math.round(hop_s * this.sampleRate);
+            const stftPadN = this.fft_n - this.hop_n;
+            this.cacheAudioData4StftCyclicContainer = new AudioDataCyclicContainer(this.sampleRate, this.numberOfChannels, (this.options.ScriptNodeOptions.ScriptNode_bufferSize + this.fft_n + stftPadN) / this.sampleRate);
+            this.reciveStftDataEvent = new MyEvent();
+            this.reciveAudioDataEvent.addListener(
+                (audioData) => {
+                    this.cacheAudioData4StftCyclicContainer.updatedata(audioData);
+                    const cachedSampleLength = this.cacheAudioData4StftCyclicContainer.sampleLength;
+                    const curAudioLength = cachedSampleLength - (cachedSampleLength - stftPadN) % this.fft_n;
+                    if (curAudioLength >= this.fft_n) {
+                        const cachedAudioData = this.cacheAudioData4StftCyclicContainer.getdata(0, curAudioLength);
+                        this.cacheAudioData4StftCyclicContainer.cleardata(curAudioLength - stftPadN);
+                        const stftData = new StftData(
+                            cachedAudioData.sampleRate,
+                            this.fft_n,
+                            this.hop_n,
+                            AudioUtils.nj_stft(AudioUtils.combine_channels(cachedAudioData.channels), this.fft_n, this.hop_n),
+                            cachedAudioData.audioTime,
+                        );
+                        this.reciveStftDataEvent.trigger(stftData);
+                    };
+                },
+                'getStftData',
+            );
+
+
         } else {
-
+            console.warn('AudioFlow已经开启过openStft了，不需重复开启');
         };
     };
 
-    openStftDraw(id = 'stftWave', width = 1000, height = 100) {
-        if (!this.stftDrawer) {
-            if (!this.stftDataCyclicContainer) throw new Error("还未开启openStft,没有stft数据!")
-            this.stftDrawer = StftDrawer(id, width, height, this.keeping_duration, show_time = true);
-            this.onReciveAudioDate((audioData) => { this.stftDrawer.set_data(this.stftDataCyclicContainer.getdata()) })
+    keepStft = (keeping_duration = 10) => {
+        if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行 keepStft 。然而传入了${keeping_duration}`);
+        this.stftDataCyclicContainer = new StftDataCyclicContainer(this.sampleRate, this.fft_n, this.hop_n, keeping_duration);
+        if (this.reciveAudioDataEvent.hasListener('keepStft')) this.reciveAudioDataEvent.removeListener('keepStft');
+        this.reciveStftDataEvent.addListener((stftData) => { this.stftDataCyclicContainer.updatedata(stftData); }, 'keepStft');
+        this.getStftData = () => {
+            return this.stftDataCyclicContainer.getdata();
         };
     };
+
+    openStftDraw = (id = 'stftWave', width = undefined, height = undefined, total_duration = 10, show_time = undefined) => {
+        if (!this.reciveStftDataEvent) throw new Error("还未开启openStft,没有stft数据!");
+        if (!this.reciveStftDataEvent.hasListener('stftDrawer.updateStftData')) {
+            this.stftDrawer = new StftDrawer(id, width, height, this.fft_n, this.hop_n, this.sampleRate, total_duration, show_time);
+            this.reciveStftDataEvent.addListener((stftData) => { this.stftDrawer.updateStftData(stftData); }, 'stftDrawer.updateStftData');
+        };
+    };
+
+
 };
 
 export { AudioFlow }

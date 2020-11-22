@@ -14,6 +14,7 @@ class AudioData {
         this.channels = channels;
         this.audioTime = audioTime;
 
+        this.numberOfChannels = channels.length;
         this.sampleLength = channels[0].length;
         this.timeLength = this.sampleLength / this.sampleRate;
     };
@@ -45,6 +46,7 @@ class AudioDataCyclicContainer {
     ) {
         this.sampleRate = sampleRate;
         this.max_duration = max_duration;
+        this.numberOfChannels = numberOfChannels;
 
         this.audioCyclicChannels = Array(numberOfChannels);
         for (let i = 0; i < numberOfChannels; i += 1) {
@@ -53,13 +55,17 @@ class AudioDataCyclicContainer {
         this.audioTime = null;
     };
 
+    get sampleLength() {
+        return this.audioCyclicChannels[0].length;
+    }
+
     get timeLength() {
-        return this.audioCyclicChannels[0].data_length * this.sampleRate;
+        return this.sampleLength / this.sampleRate;
     };
 
-    cleardata = () => {
-        for (let i = 0; i < numberOfChannels; i += 1) {
-            this.audioCyclicChannels[i].clear();
+    cleardata = (clearLength = undefined) => {
+        for (let i = 0; i < this.numberOfChannels; i += 1) {
+            this.audioCyclicChannels[i].clear(clearLength);
         };
     };
 
@@ -77,15 +83,23 @@ class AudioDataCyclicContainer {
         this.audioTime = audioData.audioTime;
     };
 
-    getdata = () => {
+    getdata = (startSample = undefined, endSample = undefined) => {
         return new AudioData(
             this.sampleRate,
             this.audioCyclicChannels.map((cyclic_channel) => {
-                return cyclic_channel.toArray();
+                return cyclic_channel.toArray(startSample, endSample);
             }),
             this.audioTime,
         );
     };
+
+    popdata = (popSampleLength) => {
+        return new AudioData(
+            this.sampleRate,
+            this.audioCyclicChannels.map(cyclic_channel => cyclic_channel.popArray(popSampleLength)),
+            this.audioTime,
+        );
+    }
 };
 
 class StftDataCyclicContainer {
@@ -111,7 +125,7 @@ class StftDataCyclicContainer {
     };
 
     get timeLength() {
-        return this.stftCyclicMatrix.length * this.hop_n / this.sampleRate;
+        return this.stftCyclicMatrix.curRowsN * this.hop_n / this.sampleRate;
     };
 
     cleardata = () => {

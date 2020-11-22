@@ -45,38 +45,36 @@ async function main() {
             myWorkerScript.sendData('Event', 'inited');
         }
     );
-    myWorkerScript.reciveData('stftData', (stftDataContent) => {
-        const stft = new Float32Matrix(
-            stftDataContent.stft.stftMartrixHeight,
-            stftDataContent.stft.stftMartrixWidth
-        );
-        stft._arrayBuffer = stftDataContent.stft.stftMartrixArrayBuffer;
-        self.audioContainer.updateStftDataClip(
-            new StftData(
-                stftDataContent.sampleRate,
-                stftDataContent.fft_n,
-                stftDataContent.hop_n,
-                stft,
-                stftDataContent.audioTime
-            )
-        );
+    myWorkerScript.reciveData(
+        'stftData',
+        (stftDataContent) => {
+            const stft = new Float32Matrix(
+                stftDataContent.stft.stftMartrixHeight,
+                stftDataContent.stft.stftMartrixWidth,
+                stftDataContent.stft.stftMartrixArrayBuffer
+            );
+            self.audioContainer.updateStftDataClip(
+                new StftData(
+                    stftDataContent.sampleRate,
+                    stftDataContent.fft_n,
+                    stftDataContent.hop_n,
+                    stft,
+                    stftDataContent.audioTime
+                )
+            );
 
-        if (self.audioContainer.stftDataCyclicContainer.timeLength > 0.5) {
-            const full_stftData = self.audioContainer.getStftData();
-            const onebatch_stft_tfTensor = tf.tensor(full_stftData.stft._float32ArrayView, [1, full_stftData.stft.height, full_stftData.stft.width]);
-
-            const predict_res = self.model.predict(onebatch_stft_tfTensor);
-            const softmax_res = predict_res.squeeze(0).softmax();
-            const argmax_res_array = softmax_res.argMax(-1).arraySync();
-            const pinyinArray = argmax_res_array.map(max_arg => pinyin.num2py(max_arg));
-            myWorkerScript.sendData('pinyinArray', pinyinArray);
-
-            self.audioContainer.stftDataCyclicContainer.cleardata();
-
-
-        };
-
-    });
+            if (self.audioContainer.stftDataCyclicContainer.timeLength > 0.5) {
+                const full_stftData = self.audioContainer.getStftData();
+                const onebatch_stft_tfTensor = tf.tensor(full_stftData.stft.typedArrayView, [1, full_stftData.stft.rowsN, full_stftData.stft.columnsN]);
+                const predict_res = self.model.predict(onebatch_stft_tfTensor);
+                const softmax_res = predict_res.squeeze(0).softmax();
+                const argmax_res_array = softmax_res.argMax(-1).arraySync();
+                const pinyinArray = argmax_res_array.map(max_arg => pinyin.num2py(max_arg));
+                myWorkerScript.sendData('pinyinArray', pinyinArray);
+                self.audioContainer.stftDataCyclicContainer.cleardata();
+            };
+        },
+    );
     myWorkerScript.sendData('Event', 'created');
 };
 
@@ -89,9 +87,9 @@ async function main() {
  *                                  fft_n: full_stftData.fft_n,
  *                                  hop_n: full_stftData.hop_n,
  *                                  stft: {
- *                                      stftMartrixArrayBuffer: full_stftData.stft._arrayBuffer,
- *                                      stftMartrixHeight = full_stftData.stft.height,
- *                                      stftMartrixWidth = full_stftData.stft.width,
+ *                                      stftMartrixArrayBuffer: full_stftData.stft.arrayBuffer,
+ *                                      stftMartrixHeight = full_stftData.stft.rowsN,
+ *                                      stftMartrixWidth = full_stftData.stft.columnsN,
  *                                  },
  *                                  audioTime: full_stftData.audioTime,
  *                              }

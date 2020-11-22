@@ -1,23 +1,31 @@
+import { CyclicFloat32Array, CyclicImageData } from './CyclicContainer.js';
 
-let cyclicFloat32Array;
-let cyclicImageData;
-async function Test() {
-    // const { CyclicFloat32Array } = await import('./CyclicContainer.js');
+const TestCyclicFloat32Array = () => {
+    const cyclicFloat32Array = new CyclicFloat32Array(7);
+    for (let arr of [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9], []]) {
+        cyclicFloat32Array.update(arr);
+        console.log(`update:${arr}\t result:${cyclicFloat32Array.toArray()}`);
+    };
+    let arr = [];
+    for (let i = -cyclicFloat32Array.length; i < cyclicFloat32Array.length; i += 1) {
+        arr.push(cyclicFloat32Array.get(i));
+    };
+    console.log(arr);
+    window.cyclicFloat32Array = cyclicFloat32Array;
+};
 
-    // cyclicFloat32Array = new CyclicFloat32Array(7);
-    // for (let arr of [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9], []]) {
-    //     cyclicFloat32Array.update(arr);
-    //     console.log(`update:${arr}\t result:${cyclicFloat32Array.toArray()}`);
-    // };
-    // let arr = [];
-    // for (let i = -cyclicFloat32Array.length; i < cyclicFloat32Array.length; i += 1) {
-    //     arr.push(cyclicFloat32Array.get(i));
-    // };
-    // console.log(arr);
-    const { CyclicImageData } = await import('./CyclicContainer.js');
 
-    cyclicImageData = new CyclicImageData(width, height);
+const TestCyclicImageData = () => {
+    const width = 50;
+    const height = 100;
+    $('body').append(`<div style="text-align:center;"><canvas id='testCanvas' width="${Math.round(width)}" height="${Math.round(height)}" style="text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
+    const testCanvasEl = document.querySelector('#testCanvas');
+    const canvas_ctx = testCanvasEl.getContext('2d');
 
+    $('body').append(`<div style="text-align:center;"><canvas id='testCanvas2' width="${Math.round(height)}" height="${Math.round(width)}" style="text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
+    const testCanvasEl2 = document.querySelector('#testCanvas2');
+    const canvas_ctx2 = testCanvasEl2.getContext('2d');
+    const cyclicImageData = new CyclicImageData(width, height);
 
     for (let k = 0; k < 15; k++) {
         let imageData = new ImageData(width, Math.floor(height / (k + 1.5)));
@@ -35,17 +43,7 @@ async function Test() {
         console.log(`update:${imageData}`);
     };
     console.log(cyclicImageData);
+    window.cyclicImageData = cyclicImageData;
 };
 
-
-const width = 50;
-const height = 100;
-$('body').append(`<div style="text-align:center;"><canvas id='testCanvas' width="${Math.round(width)}" height="${Math.round(height)}" style="text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
-const testCanvasEl = document.querySelector('#testCanvas');
-const canvas_ctx = testCanvasEl.getContext('2d');
-
-$('body').append(`<div style="text-align:center;"><canvas id='testCanvas2' width="${Math.round(height)}" height="${Math.round(width)}" style="text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
-const testCanvasEl2 = document.querySelector('#testCanvas2');
-const canvas_ctx2 = testCanvasEl2.getContext('2d');
-
-Test();
+TestCyclicImageData();

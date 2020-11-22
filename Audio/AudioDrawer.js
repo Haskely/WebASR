@@ -1,5 +1,5 @@
 import { Drawer } from '../Drawer/Drawer.js';
-import { AudioData, StftData, StftDataCyclicContainer } from './AudioContainer.js';
+import { AudioData, StftData, AudioDataCyclicContainer, StftDataCyclicContainer } from './AudioContainer.js';
 import { CyclicImageData, Float32Matrix } from '../utils/CyclicContainer.js';
 
 /*ToDo:
@@ -14,67 +14,98 @@ class WaveDrawer extends Drawer {
         width = document.body.clientWidth * 0.8,
         height = 125,
         sampleRate = 8000,
+        numberOfChannels = 1,
         total_duration = 10,
         show_time = true,
     ) {
         super(id, width, height);
         this.sampleRate = sampleRate;
+        this.numberOfChannels = numberOfChannels;
         this.total_duration = total_duration;
         this.show_time = show_time;
 
-        this.sample_n_per_pixel = Math.round(this.total_duration * this.sampleRate / this.canvas.width);
-        this.leftedAudioData = new AudioData(0, [[]], 0); // 生成一个空的AudioData对象
-        this.wave_area_length = this.canvas.height - TIME_AREA_H;
+        this.sample_nf_per_pixel = this.total_duration * this.sampleRate / this.canvas.width;
 
-        this.cyclicImageData = new CyclicImageData(this.wave_area_length, this.canvas.width)
+        this.wave_area_length = show_time ? this.canvas.height - TIME_AREA_H : this.canvas.height;
+        this.leftedAudioData = null;
+        this.leftedAudioDataCyclicContainer = new AudioDataCyclicContainer(sampleRate, numberOfChannels, Math.ceil(this.sample_nf_per_pixel) / sampleRate);
+        this.cyclicImageData = new CyclicImageData(this.wave_area_length, this.canvas.width);
+    };
+
+    _checkAudioData = (audioData) => {
+        if (!(audioData instanceof AudioData)) throw new Error("传入的 audioData 类型不为 AudioData ");
+        else if (audioData.sampleRate !== this.sampleRate) throw new Error(`传入的 audioData.sampleRate(${audioData.sampleRate}) 与 WaveDrawer.sampleRate(${this.sampleRate}) 不相等`);
     };
 
     audioData2imageData = (audioData) => {
-        const wave_image_length = Math.floor((audioData.sampleLength + this.leftedAudioData.sampleLength) / this.sample_n_per_pixel);
+        const leftedSampleLength = this.leftedAudioData ? this.leftedAudioData.sampleLength : this.leftedAudioDataCyclicContainer.sampleLength;
+        const wave_image_length = Math.floor((audioData.sampleLength + leftedSampleLength) / this.sample_nf_per_pixel);
         const wave_imgMatrix_count = new Float32Matrix(wave_image_length, this.wave_area_length);
         const per_wave_len = this.wave_area_length / audioData.channels.length;
         let row_i = 0;
         let each_pixel_sampleGroup_begin = 0;
         let each_imgMatrix_countRow_begin_i = 0;
-
-        for (let k = 0; k < this.leftedAudioData.sampleLength; k++) {
-            for (let chN = 0; chN < this.leftedAudioData.channels.length; chN++) {
-                const cur_colI = Math.round((audioData.channels[chN][k] * 0.5 + 0.5 + chN) * per_wave_len);
-                wave_imgMatrix_count.typedArrayView[cur_colI] += 1;
+        if (row_i < wave_image_length) {
+            if (!this.leftedAudioData) {
+                this.leftedAudioData = this.leftedAudioDataCyclicContainer.getdata();
+                this.leftedAudioDataCyclicContainer.cleardata();
             };
-        };
-        const nf_left = this.sample_n_per_pixel - this.leftedAudioData.sampleLength;
-        for (let k = 0; k < nf_left; k++) {
-            for (let chN = 0; chN < audioData.channels.length; chN++) {
-                const cur_colI = Math.round((audioData.channels[chN][k] * 0.5 + 0.5 + chN) * per_wave_len);
-                wave_imgMatrix_count.typedArrayView[cur_colI] += 1;
-            };
-        };
-        row_i += 1;
-        each_pixel_sampleGroup_begin = this.sample_n_per_pixel - this.leftedAudioData.sampleLength;
-        each_imgMatrix_countRow_begin_i += this.wave_area_length;
-        while (row_i < wave_image_length) {
-            for (let k = each_pixel_sampleGroup_begin; k < each_pixel_sampleGroup_begin + this.sample_n_per_pixel; k++) {
-                for (let chN = 0; chN < audioData.channels.length; chN++) {
-                    const cur_colI = Math.round((audioData.channels[chN][k] * 0.5 + 0.5 + chN) * per_wave_len);
-                    wave_imgMatrix_count.typedArrayView[each_imgMatrix_countRow_begin_i + cur_colI] += 1;
+            const leftedAudioData = this.leftedAudioData;
+            for (let k = 0; k < leftedAudioData.sampleLength; k++) {
+                for (let chN = 0; chN < leftedAudioData.channels.length; chN++) {
+                    const cur_audio_sample = leftedAudioData.channels[chN][k];
+                    const cur_colI = Math.round((cur_audio_sample * 0.5 + 0.5 + chN) * per_wave_len);
+                    wave_imgMatrix_count.typedArrayView[cur_colI] += 1;
                 };
             };
-            each_pixel_sampleGroup_begin += this.sample_n_per_pixel;
-            each_imgMatrix_countRow_begin_i += this.wave_area_length;
+            const nf_left = this.sample_nf_per_pixel - leftedSampleLength;
+            for (let k = 0; k < nf_left; k++) {
+                for (let chN = 0; chN < audioData.channels.length; chN++) {
+                    const cur_audio_sample = audioData.channels[chN][k];
+                    const cur_colI = Math.round((cur_audio_sample * 0.5 + 0.5 + chN) * per_wave_len);
+                    wave_imgMatrix_count.typedArrayView[cur_colI] += 1;
+                };
+            };
             row_i += 1;
+            each_pixel_sampleGroup_begin = this.sample_nf_per_pixel - leftedSampleLength;
+            each_imgMatrix_countRow_begin_i += this.wave_area_length;
+            while (row_i < wave_image_length) {
+                const start_k = Math.round(each_pixel_sampleGroup_begin);
+                const end_k = start_k + this.sample_nf_per_pixel;
+                for (let k = start_k; k < end_k; k++) {
+                    for (let chN = 0; chN < audioData.channels.length; chN++) {
+                        const cur_audio_sample = audioData.channels[chN][k];
+                        const cur_colI = Math.round((cur_audio_sample * 0.5 + 0.5 + chN) * per_wave_len);
+                        wave_imgMatrix_count.typedArrayView[each_imgMatrix_countRow_begin_i + cur_colI] += 1;
+                    };
+                };
+                each_pixel_sampleGroup_begin += this.sample_nf_per_pixel;
+                each_imgMatrix_countRow_begin_i += this.wave_area_length;
+                row_i += 1;
+            };
+            this.leftedAudioData = new AudioData(
+                audioData.sampleRate,
+                audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
+                audioData.audioTime
+            );
+        } else {
+            if (this.leftedAudioData) this.leftedAudioDataCyclicContainer.updatedata(this.leftedAudioData);
+            this.leftedAudioDataCyclicContainer.updatedata(
+                new AudioData(
+                    audioData.sampleRate,
+                    audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
+                    audioData.audioTime,
+                ),
+            );
+            this.leftedAudioData = null;
         };
 
-        this.leftedAudioData = new AudioData(
-            audioData.sampleRate,
-            audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
-            audioData.audioTime
-        );
 
+        if (!wave_image_length) return;
         const imageData = new ImageData(this.wave_area_length, wave_image_length);
         for (let i = 0; i < wave_imgMatrix_count.typedArrayView.length; i += 1) {
             const p = i * 4;
-            const cur_pixel = circle_one(wave_imgMatrix_count.typedArrayView[i] / this.sample_n_per_pixel);
+            const cur_pixel = circle_one(wave_imgMatrix_count.typedArrayView[i] / this.sample_nf_per_pixel);
 
             imageData.data[p + 0] = 255 * cur_pixel; // R value
             imageData.data[p + 1] = 255 * cur_pixel; // G value
@@ -99,7 +130,10 @@ class WaveDrawer extends Drawer {
      *                      }
      */
     updateAudioData = (audioData) => {
-        this.cyclicImageData.update(this.audioData2imageData(audioData));
+        this._checkAudioData(audioData);
+        const imageData = this.audioData2imageData(audioData);
+        if (!imageData) return;
+        this.cyclicImageData.update(imageData);
         this.setData(
             {
                 cyclicImageData: this.cyclicImageData,
@@ -166,11 +200,19 @@ class StftDrawer extends Drawer {
         this.total_duration = total_duration;
         this.show_time = show_time;
         this.stftAreaHeight = this.canvas.height - time_area_h;
+
         this.cyclicImageData = new CyclicImageData(stftFrequencyN, Math.ceil(total_duration * sampleRate / hop_n));
+
+        // this._half_pad_n = (fft_n / hop_n - 1) * 0.5 * this.stftAreaHeight / stftFrequencyN;
     };
 
     _check_stftData(stftData) {
-
+        if (!(stftData instanceof StftData)) throw new Error("传入的 stftData 类型不为 StftData ");
+        else {
+            for (let prop_name of ['sampleRate', 'fft_n', 'hop_n']) {
+                if (stftData[prop_name] !== this[prop_name]) throw new Error(`传入的 stftData.${[prop_name]}(${stftData[prop_name]})与 StftDrawer.${[prop_name]}(${this[prop_name]})不相等`);
+            };
+        };
     };
 
     /**
@@ -185,12 +227,8 @@ class StftDrawer extends Drawer {
      *                      }
      */
     updateStftData = (stftData) => {
-        // this._check_stftData(stftData);
-
-        // const pad_n = stftData.fft_n / stftData.hop_n + 1;
-        // const half_pad_n = Math.round(pad_n / 2);
-        // const padded_time_n = Math.round(stft_time_n + pad_n);
-
+        this._check_stftData(stftData);
+        if (!stftData.stft.rowsN) return;
         let max_value = stftData.stft.typedArrayView[0];
         for (let i = 1; i < stftData.stft.typedArrayView.length; i += 1) {
             const cur_value = stftData.stft.typedArrayView[i];
@@ -213,19 +251,19 @@ class StftDrawer extends Drawer {
         });
     };
 
-
-
     draw = async ({ cyclicImageData, audioTime }) => {
         const imageData = cyclicImageData.toImageDataT();
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const new_height = this.stftAreaHeight;
-        const new_width = imageData.width * new_height / imageData.height;
+        // const new_width = new_height * imageData.width / imageData.height;
+        const new_width = imageData.width * this.hop_n * this.canvas.width / (this.sampleRate * this.total_duration);
+
         const imageBitmap = await createImageBitmap(imageData);
+
         this.canvas_ctx.drawImage(imageBitmap,
             this.canvas.width - new_width, 0,
             new_width, new_height,
         );
-        // this.canvas.width - new_width
         if (this.show_time) {
             const end_time = audioTime;
             this.canvas_ctx.beginPath();

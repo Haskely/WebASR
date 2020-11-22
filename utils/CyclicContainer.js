@@ -20,9 +20,17 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
             this.typedArrayView = new TypedArrayClass(this.arrayBuffer);
         };
 
-        clear = () => {
-            this.length = 0;
-            this.endPoint = 0;
+        clear = (clearLength = this.length, fromEnd = false) => {
+            if (clearLength < this.length) {
+                this.length -= clearLength;
+                if (fromEnd) {
+                    this.endPoint -= clearLength;
+                    if (this.endPoint < 0) this.endPoint += this.size;
+                };
+            } else {
+                this.endPoint = 0;
+                this.length = 0;
+            };
         };
 
         get = (i) => {
@@ -74,9 +82,9 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
             };
         };
 
-        toArray(s = 0, e = 0) {
+        toArray(s = 0, e = this.length) {
             const size = this.size;
-            const quasi_start_point = this.endPoint - this.length + s;
+            const quasi_start_point = s < 0 ? this.endPoint + s : this.endPoint - this.length + s;
             const length = e > 0 ? e : (this.length + e);
 
             const typedArray = new TypedArrayClass(length);
@@ -106,6 +114,15 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
             };
             return typedArray;
         };
+
+        popArray(popLength, fromEnd = false) {
+            if (fromEnd) {
+                return this.toArray(-popLength);
+            } else {
+                return this.toArray(0, popLength);
+            };
+            this.clear(popLength, fromEnd);
+        };
     };
     return CyclicTypedArray;
 };
@@ -115,10 +132,10 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
  */
 function getTypedArrayMatrixClass(TypedArrayClass) {
     class TypedArrayMatrixClass {
-        constructor(rowsN, columnsN) {
-            this.rowsN = rowsN; //矩阵行数
-            this.columnsN = columnsN; //矩阵列数
-            this.arrayBuffer = new ArrayBuffer(TypedArrayClass.BYTES_PER_ELEMENT * this.rowsN * this.columnsN);
+        constructor(rowsN, columnsN, initArrayBuffer = null) {
+            this.rowsN = rowsN > 0 ? Math.round(rowsN) : 0; //矩阵行数
+            this.columnsN = columnsN > 0 ? Math.round(columnsN) : 0; //矩阵列数
+            this.arrayBuffer = initArrayBuffer ? initArrayBuffer : new ArrayBuffer(TypedArrayClass.BYTES_PER_ELEMENT * this.rowsN * this.columnsN);
             this.typedArrayView = new TypedArrayClass(this.arrayBuffer);//储存矩阵数据的一维数组;
         };
 
