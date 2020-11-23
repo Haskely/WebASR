@@ -1,6 +1,24 @@
 "use strict";
 import { AudioFlow } from './Audio/AudioFlow.js';
 import { MyWorker } from './Workers/MyWorker.js';
+
+function createElement(tagName, attrs) {
+    const el = document.createElement(tagName);
+    for (let attrName in attrs) {
+        el.setAttribute(attrName, attrs[attrName]);
+    };
+    return el;
+};
+
+function createElementNS(tagName, attrs, namespaceURI) {
+    const el = document.createElementNS(namespaceURI, tagName);
+    for (let attrName in attrs) {
+        el.setAttribute(attrName, attrs[attrName]);
+    };
+    return el;
+};
+
+
 //基础配置
 const sampleRate = 8000, numberOfChannels = 1, bufferSize = 256, fft_s = 0.032, hop_s = 0.008;
 /**
@@ -18,7 +36,8 @@ const audio_input = document.querySelector('#audio_input');
 const audio_input_btn = document.querySelector('#audio_input_btn');
 const record_btn = document.querySelector('#record_btn');
 const audios_div = document.querySelector('#audios');
-const pinyintext = document.querySelector('#pinyin');
+const pinyin_text = document.querySelector('#pinyin');
+const oripinyin_list = document.querySelector('#oripinyin');
 const switch_btn = document.querySelector('#switch_btn');
 const open_model_btn = document.querySelector('#open_model_btn');
 // 元素获取完毕
@@ -26,16 +45,43 @@ const open_model_btn = document.querySelector('#open_model_btn');
 // 设置页面元素事件
 audio_input.onchange = async (e) => {
     // 若收到音频文件，就连接到audio_element上
-    audios_div.replaceChildren();
+    // audios_div.replaceChildren();
     for (let f of e.target.files) {
-        let div_el = document.createElement('div');
-        let audio_el = document.createElement('audio');
+        const file = f;
+        const div_el = document.createElement('div');
+        div_el.setAttribute('style', 'display: flex;width: fit-content;margin: auto;background-color: aliceblue;border-style: dashed;border-radius: 1cm;');
+
+        const span_el = document.createElement('span');
+        span_el.textContent = file.name;
+        span_el.setAttribute('style', 'margin: auto;padding: 10;');
+
+        const audio_el = document.createElement('audio');
         audio_el.setAttribute("controls", "");
-        audio_el.src = URL.createObjectURL(f);
-        audioFlow.addAudioSource(audio_el);
-        div_el.appendChild(audio_el);
+        audio_el.setAttribute('style', 'margin-right: auto;');
+        audio_el.src = URL.createObjectURL(file);
+        audio_el.play();
+        const curSourceID = audioFlow.addAudioSource(audio_el);
+
+        const close_svg_btn = createElementNS('svg', {
+            viewBox: "0 0 1024 1024",
+            width: "20",
+            height: "20",
+            style: 'margin: auto;padding: 10;',
+        }, "http://www.w3.org/2000/svg");
+        close_svg_btn.appendChild(createElementNS('path', {
+            d: "M0 512.279845C0 229.234931 229.375931 0 511.999845 0s511.999845 229.235931 511.999845 511.719845v0.56a511.068845 511.068845 0 0 1-149.806955 362.00589A511.603845 511.603845 0 0 1 511.999845 1023.99969C228.816931 1023.99969 0 794.762759 0 512.279845z m546.233835 0l178.827945-178.734946a23.272993 23.272993 0 0 0 0-33.13999l-1.093999-1.071a23.272993 23.272993 0 0 0-33.13999 0L511.999845 478.579855 333.171899 299.333909a23.272993 23.272993 0 0 0-33.13999 0l-1.093999 1.07a23.272993 23.272993 0 0 0 0 33.13999l178.827945 179.269946L298.93791 691.549791a23.272993 23.272993 0 0 0 0 33.11699l1.093999 1.093999a23.272993 23.272993 0 0 0 33.13999 0L511.999845 547.024834 690.826791 725.75978a23.272993 23.272993 0 0 0 33.13999 0l1.094999-1.093999a23.272993 23.272993 0 0 0 0-33.11699l-178.827945-179.269946z",
+            fill: "#d81e06",
+        }, "http://www.w3.org/2000/svg"));
+        close_svg_btn.onclick = (e) => {
+            audioFlow.delAudioSource(curSourceID);
+            audios_div.removeChild(div_el);
+        };
+
+        div_el.append(span_el, audio_el, close_svg_btn)
+
         audios_div.appendChild(div_el);
     };
+    e.target.value = "";
 };
 audio_input_btn.onclick = () => {
     //用audio_input_btn作为audio_input的马甲。
@@ -55,15 +101,16 @@ record_btn.onclick = async (e) => {
                 });
             audioFlow.addAudioSource(stream);
             // e.target.textContent = 'StopRecord';
+            const animate = document.createElementNS("http://www.w3.org/2000/svg", 'animate');
+            animate.setAttribute('attributeName', 'opacity');
+            animate.setAttribute('values', '1;0.1;1');
+            animate.setAttribute('dur', '1.5s');
+            animate.setAttribute('repeatCount', 'indefinite');
+            record_btn.querySelector('#center').appendChild(animate);
 
-            record_btn.querySelector('#center').remove();
-            const rect = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
-            rect.setAttribute('id', 'center');
-            rect.setAttribute('x', 412); rect.setAttribute('y', 412); rect.setAttribute('width', 200); rect.setAttribute('height', 200);
-            record_btn.querySelector('svg').appendChild(rect);
         } else {
             console.log('navigator.mediaDevices.getUserMedia not supported on your browser! 所以你的浏览器没法录音。');
-            record_btn.querySelector('#center').setAttribute('fill', 'gray');
+            record_btn.querySelector('#outer').setAttribute('fill', 'gray');
             e.target.disabled = true;
         };
     } else {
@@ -73,11 +120,8 @@ record_btn.onclick = async (e) => {
         audioFlow.delAudioSource(stream);
         stream = null;
         // e.target.textContent = 'Record';
-        record_btn.querySelector('#center').remove();
-        const circle = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
-        circle.setAttribute('id', 'center');
-        circle.setAttribute('cx', 512); circle.setAttribute('cy', 512); circle.setAttribute('r', 100); circle.setAttribute('fill', 'red');
-        record_btn.querySelector('svg').appendChild(circle);
+        record_btn.querySelector('animate').remove();
+
     };
 };
 
@@ -122,7 +166,7 @@ open_model_btn.onclick = function (e) {
         animate.setAttribute('repeatCount', 'indefinite');
         open_model_btn.querySelector('#center').appendChild(animate);
 
-        pinyintext.textContent = "";
+        pinyin_text.textContent = "";
         full_pinyinArray = [];
         last_py = null;
     };
@@ -137,18 +181,23 @@ audioFlow.openStft(fft_s, hop_s, 10);
 audioFlow.openWaveDraw('waveDrawer', undefined, undefined, 10, false);
 audioFlow.openStftDraw('stftDrawer', undefined, undefined, 10, false);
 
-let last_py = null;
+let last_py = '_';
 let full_pinyinArray = [];
 const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
 myWorker.reciveData('pinyinArray', (pinyinArray) => {
+    oripinyin_list.animate([{ backgroundColor: 'orange' }, { backgroundColor: 'white' }], {
+        // timing options
+        duration: 1000,
+    });
+    oripinyin_list.textContent = "";
     for (let py of pinyinArray) {
-        if (py !== 'sil' && py !== last_py) {
+        oripinyin_list.textContent += ` ${py}`;
+        if (py !== '_' && py !== last_py) {
             full_pinyinArray.push(py);
-            last_py = py;
-            pinyintext.textContent += ` ${py}`;
+            pinyin_text.textContent += ` ${py}`;
         };
+        last_py = py;
     };
-    console.log(pinyinArray);
 });
 myWorker.reciveData('Event', (content) => {
     switch (content) {
@@ -169,8 +218,13 @@ myWorker.reciveData('Event', (content) => {
     };
 });
 
+import Stats from './utils/stats/stats.module.js';
+const stats = new Stats();
+stats.dom.style.cssText = "";
+document.querySelector('#stats').appendChild(stats.dom);
 audioFlow.reciveStftDataEvent.addListener(
     (stftData) => {
+        stats.update();
         const stftData_Clip = stftData;
         if (is_open_model) {
             myWorker.sendData(
@@ -186,7 +240,7 @@ audioFlow.reciveStftDataEvent.addListener(
                     },
                     audioTime: stftData_Clip.audioTime,
                 },
-                [stftData_Clip.stft.arrayBuffer]
+                [stftData_Clip.stft.arrayBuffer],
             );
         };
     },

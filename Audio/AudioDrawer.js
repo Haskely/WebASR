@@ -8,7 +8,36 @@ import { CyclicImageData, Float32Matrix } from '../utils/CyclicContainer.js';
 
 
 const TIME_AREA_H = 20;
+const RGBcolors = [[255, 255, 240], [255, 240, 245], [0, 191, 255], [160, 32, 240]];
 
+/**
+ * 
+ * @param {Number} num 0-1之间的浮点数
+ */
+function num2color(num) {
+    const RGBcolor = convert_to_rgb(num, RGBcolors);
+
+    const RGBAcolor = new Uint8ClampedArray(4);
+    RGBAcolor[0] = RGBcolor[0];
+    RGBAcolor[1] = RGBcolor[1];
+    RGBAcolor[2] = RGBcolor[2];
+    RGBAcolor[3] = 255;
+
+    return RGBAcolor;
+};
+
+function convert_to_rgb(val, RGBcolors) {
+
+    const i_f = val * (RGBcolors.length - 1);
+
+    const i = Math.floor(i_f / 1), f = i_f % 1;  // Split into whole & fractional parts.
+    if (f == 0) {
+        return RGBcolors[i]
+    } else {
+        const [[r1, g1, b1], [r2, g2, b2]] = [RGBcolors[i], RGBcolors[i + 1]];
+        return [Math.round(r1 + f * (r2 - r1)), Math.round(g1 + f * (g2 - g1)), Math.round(b1 + f * (b2 - b1))];
+    };
+};
 class WaveDrawer extends Drawer {
     constructor(id = 'audioWave',
         width = document.body.clientWidth * 0.8,
@@ -106,11 +135,11 @@ class WaveDrawer extends Drawer {
         for (let i = 0; i < wave_imgMatrix_count.typedArrayView.length; i += 1) {
             const p = i * 4;
             const cur_pixel = circle_one(wave_imgMatrix_count.typedArrayView[i] / this.sample_nf_per_pixel);
-
-            imageData.data[p + 0] = 255 * cur_pixel; // R value
-            imageData.data[p + 1] = 255 * cur_pixel; // G value
-            imageData.data[p + 2] = 255 * cur_pixel; // B value
-            imageData.data[p + 3] = 255; // A value
+            const color = num2color(cur_pixel);
+            imageData.data[p + 0] = color[0]; // R value
+            imageData.data[p + 1] = color[1]; // G value
+            imageData.data[p + 2] = color[2]; // B value
+            imageData.data[p + 3] = color[3]; // A value
         };
 
         return imageData;
@@ -173,8 +202,15 @@ function sin_one(x) {
 };
 
 function circle_one(x) {
-    if (x >= 0) return Math.sqrt(x * (2 - x));
-    else return -Math.sqrt(-x * (2 - x));
+
+    if (x >= 0) {
+        x = x > 0.5 ? 1 : x * 2;
+        return Math.sqrt(x * (2 - x));
+    }
+    else {
+        x = x < -0.5 ? -1 : x * 2;
+        return -Math.sqrt(-x * (2 - x))
+    };
 };
 
 class StftDrawer extends Drawer {
@@ -235,13 +271,15 @@ class StftDrawer extends Drawer {
             if (max_value < cur_value) max_value = cur_value;
         };
         const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
+
         for (let p = 0; p * 4 < imageData.data.length; p += 1) {
             const i = p * 4;
-            const onescaled_stft_point = stftData.stft.typedArrayView[p] / max_value;
-            imageData.data[i + 0] = onescaled_stft_point * 255; // R value
-            imageData.data[i + 1] = onescaled_stft_point * 255; // G value
-            imageData.data[i + 2] = onescaled_stft_point * 255; // B value
-            imageData.data[i + 3] = 255; // A value
+            const onescaled_stft_point = max_value ? (stftData.stft.typedArrayView[p] / max_value) : 0;
+            const color = num2color(onescaled_stft_point);
+            imageData.data[i + 0] = color[0]; // R value
+            imageData.data[i + 1] = color[1]; // G value
+            imageData.data[i + 2] = color[2]; // B value
+            imageData.data[i + 3] = color[3]; // A value
         };
 
         this.cyclicImageData.update(imageData);

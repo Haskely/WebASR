@@ -103,6 +103,7 @@ class AudioFlowProcesser {
             if (this.audioCtx) {
                 await this._setAudioSource(audioSourceID);
             };
+            return audioSourceID;
         };
     };
 
