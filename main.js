@@ -49,15 +49,15 @@ audio_input.onchange = async (e) => {
     for (let f of e.target.files) {
         const file = f;
         const div_el = document.createElement('div');
-        div_el.setAttribute('style', 'display: flex;width: fit-content;margin: auto;background-color: aliceblue;border-style: dashed;border-radius: 1cm;');
+        div_el.style.cssText = 'display: flex;width: fit-content;margin: 2 auto;background-color: aliceblue;border-style: dashed;border-radius: 1cm;';
 
         const span_el = document.createElement('span');
         span_el.textContent = file.name;
-        span_el.setAttribute('style', 'margin: auto;padding: 10;');
+        span_el.style.cssText = 'margin: auto;padding: 10;';
 
         const audio_el = document.createElement('audio');
         audio_el.setAttribute("controls", "");
-        audio_el.setAttribute('style', 'margin-right: auto;');
+        audio_el.style.cssText = 'margin-right: auto;';
         audio_el.src = URL.createObjectURL(file);
         audio_el.play();
         const curSourceID = audioFlow.addAudioSource(audio_el);
