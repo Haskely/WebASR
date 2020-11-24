@@ -5,7 +5,7 @@
 * 查看DEMO：https://haskely.github.io/WebASR 
 * （国内访问 https://haskely.gitee.io/webasr ）
 * （目前的模型是个菜菜的模型，完全不准~）
-![WebASR网页截图](https://raw.githubusercontent.com/Haskely/WebASR/master/screenshot/WebASR.png)
+![WebASR网页截图](https://gitee.com/Haskely/WebASR/raw/master/screenshot/WebASR.png)
 ## Introduction - 介绍
 * 基于TensorFlowJS和WebAudioAPI的网页版的中文语音识别玩具项目。
 * 零服务器需要。波形绘图，短时傅里叶频谱计算，模型识别工作等完全在本地进行！
