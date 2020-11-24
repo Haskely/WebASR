@@ -1,23 +1,7 @@
 "use strict";
 import { AudioFlow } from './Audio/AudioFlow.js';
 import { MyWorker } from './Workers/MyWorker.js';
-
-function createElement(tagName, attrs) {
-    const el = document.createElement(tagName);
-    for (let attrName in attrs) {
-        el.setAttribute(attrName, attrs[attrName]);
-    };
-    return el;
-};
-
-function createElementNS(tagName, attrs, namespaceURI) {
-    const el = document.createElementNS(namespaceURI, tagName);
-    for (let attrName in attrs) {
-        el.setAttribute(attrName, attrs[attrName]);
-    };
-    return el;
-};
-
+import { createElementNS } from './utils/other_utils.js';
 
 //基础配置
 const sampleRate = 8000, numberOfChannels = 1, bufferSize = 256, fft_s = 0.032, hop_s = 0.008;
@@ -49,7 +33,7 @@ audio_input.onchange = async (e) => {
     for (let f of e.target.files) {
         const file = f;
         const div_el = document.createElement('div');
-        div_el.style.cssText = 'display: flex;width: fit-content;margin: 2 auto;background-color: aliceblue;border-style: dashed;border-radius: 1cm;';
+        div_el.style.cssText = 'display: flex;width: fit-content;margin:2 auto;background-color: aliceblue;border-style: dashed;border-radius: 1cm;';
 
         const span_el = document.createElement('span');
         span_el.textContent = file.name;

@@ -1,12 +1,17 @@
-
-
-function body_append(tagName, id = null, attrs = {}, innerHtml = '') {
-    const new_element = document.createElement(tagName);
-    attrs.id = id;
-    for (attrName in attrs) {
-        if (attrs[attrName]) new_element.setAttribute(attrName, attrs[attrName]);
+function createElement(tagName, attrs) {
+    const el = document.createElement(tagName);
+    for (let attrName in attrs) {
+        el.setAttribute(attrName, attrs[attrName]);
     };
-    new_element.innerHtml = innerHtml;
-    document.body.appendChild(new_element);
-    return new_element;
+    return el;
 };
+
+function createElementNS(tagName, attrs, namespaceURI) {
+    const el = document.createElementNS(namespaceURI, tagName);
+    for (let attrName in attrs) {
+        el.setAttribute(attrName, attrs[attrName]);
+    };
+    return el;
+};
+
+export { createElement, createElementNS };
