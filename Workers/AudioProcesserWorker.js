@@ -1,6 +1,9 @@
 "use strict";
 
-importScripts("../tensorflowjs/tfjs@2.6.0.js");
+importScripts("../tensorflowjs/tfjs@2.7.0.js");
+
+const predict_duration = 3;
+const predict_sep = 0.5;
 
 let model, audioContainer;
 async function init_import() {
@@ -12,7 +15,7 @@ async function init_import() {
 };
 
 async function init_model() {
-    const model = await tf.loadGraphModel('../tensorflowjs/tfjsModel/tfjs_savedModel/model.json');
+    const model = await tf.loadGraphModel('../tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/model.json');
     return model;
 };
 
@@ -63,7 +66,7 @@ async function main() {
                 )
             );
 
-            if (self.audioContainer.stftDataCyclicContainer.timeLength > 0.5) {
+            if (self.audioContainer.stftDataCyclicContainer.timeLength > predict_duration) {
                 const full_stftData = self.audioContainer.getStftData();
                 const onebatch_stft_tfTensor = tf.tensor(full_stftData.stft.typedArrayView, [1, full_stftData.stft.rowsN, full_stftData.stft.columnsN]);
                 const predict_res = self.model.predict(onebatch_stft_tfTensor);
@@ -71,7 +74,7 @@ async function main() {
                 const argmax_res_array = softmax_res.argMax(-1).arraySync();
                 const pinyinArray = argmax_res_array.map(max_arg => pinyin.num2py(max_arg));
                 myWorkerScript.sendData('pinyinArray', pinyinArray);
-                self.audioContainer.stftDataCyclicContainer.cleardata();
+                self.audioContainer.stftDataCyclicContainer.cleardata(predict_duration - predict_sep);
             };
         },
     );

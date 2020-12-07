@@ -1,6 +1,6 @@
 import { Drawer } from '../Drawer/Drawer.js';
 import { AudioData, StftData, AudioDataCyclicContainer, StftDataCyclicContainer } from './AudioContainer.js';
-import { CyclicImageData, Float32Matrix } from '../utils/CyclicContainer.js';
+import { CyclicFloat32Array, CyclicImageData, Float32Matrix } from '../utils/CyclicContainer.js';
 
 /*ToDo:
     流程标准化，将每一个data update都直接生成合适大小的
@@ -26,8 +26,15 @@ function num2color(num) {
     return RGBAcolor;
 };
 
-function convert_to_rgb(val, RGBcolors) {
-
+/**
+ * 
+ * @param {Number} val 
+ * @param {Array[Uint8ClampedArray(3)]} RGBcolors Example:[[255, 255, 240], [255, 240, 245], [0, 191, 255], [160, 32, 240]]
+ * @param {Number} min_val 
+ * @param {Number} max_val 
+ */
+function convert_to_rgb(val, RGBcolors, min_val=0, max_val=1) {
+    val = (val - min_val)/(max_val - min_val);
     const i_f = val * (RGBcolors.length - 1);
 
     const i = Math.floor(i_f / 1), f = i_f % 1;  // Split into whole & fractional parts.
@@ -38,15 +45,17 @@ function convert_to_rgb(val, RGBcolors) {
         return [Math.round(r1 + f * (r2 - r1)), Math.round(g1 + f * (g2 - g1)), Math.round(b1 + f * (b2 - b1))];
     };
 };
+
 class WaveDrawer extends Drawer {
     constructor(id = 'audioWave',
-        width = document.body.clientWidth * 0.8,
+        width = null,
         height = 125,
         sampleRate = 8000,
         numberOfChannels = 1,
         total_duration = 10,
         show_time = true,
     ) {
+        if(!width) width = Math.floor(total_duration * sampleRate / 64);
         super(id, width, height);
         this.sampleRate = sampleRate;
         this.numberOfChannels = numberOfChannels;
@@ -129,7 +138,6 @@ class WaveDrawer extends Drawer {
             this.leftedAudioData = null;
         };
 
-
         if (!wave_image_length) return;
         const imageData = new ImageData(this.wave_area_length, wave_image_length);
         for (let i = 0; i < wave_imgMatrix_count.typedArrayView.length; i += 1) {
@@ -141,9 +149,7 @@ class WaveDrawer extends Drawer {
             imageData.data[p + 2] = color[2]; // B value
             imageData.data[p + 3] = color[3]; // A value
         };
-
         return imageData;
-
     };
 
     /**
@@ -202,21 +208,19 @@ function sin_one(x) {
 };
 
 function circle_one(x) {
+    if (x == 0) return 0;
+    x = Math.abs(x);
+    const r = 0.7;
+    if (x > r) x = r;
+    const y = Math.sqrt(x * (2 * r - x)) + 1 - r;
+    return y
 
-    if (x >= 0) {
-        x = x > 0.5 ? 1 : x * 2;
-        return Math.sqrt(x * (2 - x));
-    }
-    else {
-        x = x < -0.5 ? -1 : x * 2;
-        return -Math.sqrt(-x * (2 - x))
-    };
 };
 
 class StftDrawer extends Drawer {
     constructor(
         id = 'audioStft',
-        width = document.body.clientWidth * 0.8,
+        width = null,
         height = null,
         fft_n = 256,
         hop_n = 64,
@@ -225,6 +229,8 @@ class StftDrawer extends Drawer {
         show_time = true) {
         const time_area_h = show_time ? TIME_AREA_H : 0;
         const stftFrequencyN = (fft_n / 2 + 1);
+        const maxStftTimeN = Math.ceil(total_duration * sampleRate / hop_n)
+        if (!width) width = maxStftTimeN;
         if (!height) {
             width = Math.round(width);
             height = Math.round(width * stftFrequencyN * hop_n / (total_duration * sampleRate)) + time_area_h;
@@ -237,8 +243,8 @@ class StftDrawer extends Drawer {
         this.show_time = show_time;
         this.stftAreaHeight = this.canvas.height - time_area_h;
 
-        this.cyclicImageData = new CyclicImageData(stftFrequencyN, Math.ceil(total_duration * sampleRate / hop_n));
-
+        this.cyclicImageData = new CyclicImageData(stftFrequencyN, maxStftTimeN);
+        this.cyclicStftMaxValues = new CyclicFloat32Array(Math.round(sampleRate/fft_n));
         // this._half_pad_n = (fft_n / hop_n - 1) * 0.5 * this.stftAreaHeight / stftFrequencyN;
     };
 
@@ -265,13 +271,11 @@ class StftDrawer extends Drawer {
     updateStftData = (stftData) => {
         this._check_stftData(stftData);
         if (!stftData.stft.rowsN) return;
-        let max_value = stftData.stft.typedArrayView[0];
-        for (let i = 1; i < stftData.stft.typedArrayView.length; i += 1) {
-            const cur_value = stftData.stft.typedArrayView[i];
-            if (max_value < cur_value) max_value = cur_value;
-        };
-        const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
 
+        const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
+        
+        this.cyclicStftMaxValues.update([Math.max(...stftData.stft.typedArrayView)])
+        const max_value = Math.max(...this.cyclicStftMaxValues.typedArrayView)
         for (let p = 0; p * 4 < imageData.data.length; p += 1) {
             const i = p * 4;
             const onescaled_stft_point = max_value ? (stftData.stft.typedArrayView[p] / max_value) : 0;
@@ -291,7 +295,6 @@ class StftDrawer extends Drawer {
 
     draw = async ({ cyclicImageData, audioTime }) => {
         const imageData = cyclicImageData.toImageDataT();
-        this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const new_height = this.stftAreaHeight;
         // const new_width = new_height * imageData.width / imageData.height;
         const new_width = imageData.width * this.hop_n * this.canvas.width / (this.sampleRate * this.total_duration);

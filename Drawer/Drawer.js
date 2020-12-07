@@ -5,9 +5,12 @@ class Drawer {
 
         this.canvas = document.querySelector(`canvas#${id}`);
         if (!this.canvas) {
-            $('body').append(`<div style="text-align:center;"><canvas id='${id}' width="${Math.round(width)}" height="${Math.round(height)}" style="text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
+            $('body').append(`<div style="margin:1 auto;"><canvas id='${id}' width="${Math.round(width)}" height="${Math.round(height)}" style="max-width: 95vw;text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
             this.canvas = document.querySelector(`#${id}`);
-        };
+        } else {
+            this.canvas.width = width;
+            this.canvas.height = height;
+        }
         this.canvas_ctx = this.canvas.getContext('2d');
         this.data = null;
         this.next_data_ready = false;

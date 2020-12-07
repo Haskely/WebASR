@@ -1,7 +1,6 @@
 import { CyclicFloat32Array, CyclicFloat32Matrix, Float32Matrix } from '../utils/CyclicContainer.js';
 
 
-
 class AudioData {
     /**
      * 
@@ -128,8 +127,8 @@ class StftDataCyclicContainer {
         return this.stftCyclicMatrix.curRowsN * this.hop_n / this.sampleRate;
     };
 
-    cleardata = () => {
-        this.stftCyclicMatrix.clear();
+    cleardata = (clearLength = undefined) => {
+        this.stftCyclicMatrix.clear(clearLength);
     };
 
     updatedata = (stftData) => {
@@ -179,4 +178,5 @@ class AudioContainer {
         return this.stftDataCyclicContainer.getdata();
     };
 };
+
 export { AudioData, AudioDataCyclicContainer, StftData, StftDataCyclicContainer, AudioContainer }

@@ -116,12 +116,15 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
         };
 
         popArray(popLength, fromEnd = false) {
+            let typedArray;
             if (fromEnd) {
-                return this.toArray(-popLength);
+                typedArray = this.toArray(-popLength);
             } else {
-                return this.toArray(0, popLength);
+                typedArray = this.toArray(0, popLength);
             };
             this.clear(popLength, fromEnd);
+
+            return typedArray;
         };
     };
     return CyclicTypedArray;
@@ -178,9 +181,17 @@ function getCyclicTypedArrayMatrixClass(TypedArrayClass) {
             return this.endPoint / this.columnsN;
         }
 
-        clear = () => {
-            this.length = 0;
-            this.endPoint = 0;
+        clear = (clearLength = this.length, fromEnd = false) => {
+            if (clearLength < this.length) {
+                this.length -= clearLength;
+                if (fromEnd) {
+                    this.endPoint -= clearLength;
+                    if (this.endPoint < 0) this.endPoint += this.size;
+                };
+            } else {
+                this.endPoint = 0;
+                this.length = 0;
+            };
         };
 
         get = (i, j) => {

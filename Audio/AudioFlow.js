@@ -81,7 +81,7 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
-    openStft = (fft_s = 0.032, hop_s = 0.008, keeping_duration = 10) => {
+    openStft = (fft_s = 0.032, hop_s = 0.008) => {
         if (!this.reciveStftDataEvent) {
             this.fft_s = fft_s;
             this.hop_s = hop_s;
