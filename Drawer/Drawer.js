@@ -23,10 +23,24 @@ class Drawer {
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     };
 
-    _process_draw = async () => {
+    _process_draw_hunger = async () => {
+        /**
+         * 哭了，设计的事件触发绘制模式反而导致帧数抖动。。。
+         * 毕竟不是底层设计
+         */
         await this.draw(this.data);
         window.requestAnimationFrame(this.requestAF);
     };
+
+    _process_draw_smoothly = () => {
+        /**
+         * 傻瓜式设计效果更平滑
+         */
+        this.draw(this.data);
+        window.requestAnimationFrame(this._process_draw_smoothly);
+    };
+
+    _process_draw = this._process_draw_smoothly
 
     requestAF = () => {
         if (this.next_data_ready) {

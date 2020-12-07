@@ -74,9 +74,9 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
-    openWaveDraw = (id = 'audioWave', width = undefined, height = undefined, total_duration = 10, show_time = undefined) => {
+    openWaveDraw = (id = 'audioWave', total_duration = 10, show_time = false) => {
         if (!this.reciveAudioDataEvent.hasListener('waveDrawer.updateAudioData')) {
-            this.waveDrawer = new WaveDrawer(id, width, height, this.sampleRate, this.numberOfChannels, total_duration, show_time);
+            this.waveDrawer = new WaveDrawer(id, this.sampleRate, this.numberOfChannels, total_duration, show_time);
             this.reciveAudioDataEvent.addListener((audioData) => { this.waveDrawer.updateAudioData(audioData) }, 'waveDrawer.updateAudioData')
         };
     };
@@ -127,10 +127,10 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
-    openStftDraw = (id = 'stftWave', width = undefined, height = undefined, total_duration = 10, show_time = undefined) => {
+    openStftDraw = (id = 'stftWave', total_duration = 10, show_time = false) => {
         if (!this.reciveStftDataEvent) throw new Error("还未开启openStft,没有stft数据!");
         if (!this.reciveStftDataEvent.hasListener('stftDrawer.updateStftData')) {
-            this.stftDrawer = new StftDrawer(id, width, height, this.fft_n, this.hop_n, this.sampleRate, total_duration, show_time);
+            this.stftDrawer = new StftDrawer(id, this.fft_n, this.hop_n, this.sampleRate, total_duration, show_time);
             this.reciveStftDataEvent.addListener((stftData) => { this.stftDrawer.updateStftData(stftData); }, 'stftDrawer.updateStftData');
         };
     };
