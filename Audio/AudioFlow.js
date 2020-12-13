@@ -53,9 +53,15 @@ class AudioFlow extends AudioFlowProcesser {
             undefined,
             ScriptNode_bufferSize,
             numberOfChannels,
+            /**
+             * 
+             * @param {AudioData} audioData 
+             */
             (audioData) => {
+                this.lastAudioData = audioData;
                 reciveAudioDataEvent.trigger(audioData);
             });
+        this.lastAudioData = null;
         this.sampleRate = sampleRate;
         this.numberOfChannels = numberOfChannels;
         this.reciveAudioDataEvent = reciveAudioDataEvent;
@@ -102,8 +108,8 @@ class AudioFlow extends AudioFlowProcesser {
                             cachedAudioData.sampleRate,
                             this.fft_n,
                             this.hop_n,
-                            AudioUtils.nj_stft(AudioUtils.combine_channels(cachedAudioData.channels), this.fft_n, this.hop_n),
-                            cachedAudioData.audioTime,
+                            AudioUtils.logstft(AudioUtils.combine_channels(cachedAudioData.channels), this.fft_n, this.hop_n),
+                            cachedAudioData.audioEndTime,
                         );
                         this.reciveStftDataEvent.trigger(stftData);
                     };

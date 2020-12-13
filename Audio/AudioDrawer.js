@@ -137,7 +137,7 @@ class WaveDrawer extends Drawer {
             new AudioData(
                 audioData.sampleRate,
                 audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
-                audioData.audioTime,
+                audioData.audioEndTime,
             ),
         );
 
@@ -175,19 +175,20 @@ class WaveDrawer extends Drawer {
         this.setData(
             {
                 cyclicImageData: this.cyclicImageData,
-                audioTime: audioData.audioTime,
+                audioEndTime: audioData.audioEndTime,
             }
         );
     };
 
-    draw = async ({ cyclicImageData, audioTime }) => {
+    draw = async ({ cyclicImageData, audioEndTime }) => {
         const imageData = cyclicImageData.toImageDataT();
         this.canvas_ctx.putImageData(imageData,
             this.canvas.width - imageData.width, 0,
         );
 
+        this.audioEndTime = audioEndTime;
         if (this.show_time) {
-            const end_time = audioTime;
+            const end_time = audioEndTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
@@ -229,6 +230,7 @@ class StftDrawer extends Drawer {
         this.cyclicImageData = new CyclicImageData(stftFrequencyN, maxStftTimeN);
         this.cyclicStftMaxValues = new CyclicFloat32Array(Math.round(sampleRate/fft_n));
         // this._half_pad_n = (fft_n / hop_n - 1) * 0.5 * this.stftAreaHeight / stftFrequencyN;
+        this.audioEndTime = null;
     };
 
     _check_stftData(stftData) {
@@ -244,7 +246,7 @@ class StftDrawer extends Drawer {
      * 
      * @param {StftData} stftData 具有如下格式的对象：
      *                      {
-     *                          audioTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
+     *                          audioEndTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
      *                          sampleRate:  Number, 音频采样率，单位赫兹（Hz）
      *                          fft_n: 256, 傅里叶变换窗口，单位为采样点个数（1）
      *                          hop_n: 64, 窗之间间隔长，单位为采样点个数（1）
@@ -272,17 +274,18 @@ class StftDrawer extends Drawer {
         this.cyclicImageData.update(imageData);
         this.setData({
             cyclicImageData: this.cyclicImageData,
-            audioTime: stftData.audioTime,
+            audioEndTime: stftData.audioEndTime,
         });
     };
 
-    draw = async ({ cyclicImageData, audioTime }) => {
+    draw = async ({ cyclicImageData, audioEndTime }) => {
         const imageData = cyclicImageData.toImageDataT();
         this.canvas_ctx.putImageData(imageData,
             this.canvas.width - imageData.width, 0,
         );
+        this.audioEndTime = audioEndTime;
         if (this.show_time) {
-            const end_time = audioTime;
+            const end_time = audioEndTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
@@ -378,7 +381,7 @@ class WaveDrawerFlexible extends Drawer {
             this.leftedAudioData = new AudioData(
                 audioData.sampleRate,
                 audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
-                audioData.audioTime
+                audioData.audioEndTime
             );
         } else {
             if (this.leftedAudioData) this.leftedAudioDataCyclicContainer.updatedata(this.leftedAudioData);
@@ -386,7 +389,7 @@ class WaveDrawerFlexible extends Drawer {
                 new AudioData(
                     audioData.sampleRate,
                     audioData.channels.map(ch => ch.slice(each_pixel_sampleGroup_begin)),
-                    audioData.audioTime,
+                    audioData.audioEndTime,
                 ),
             );
             this.leftedAudioData = null;
@@ -426,12 +429,12 @@ class WaveDrawerFlexible extends Drawer {
         this.setData(
             {
                 cyclicImageData: this.cyclicImageData,
-                audioTime: audioData.audioTime,
+                audioEndTime: audioData.audioEndTime,
             }
         );
     };
 
-    draw = async ({ cyclicImageData, audioTime }) => {
+    draw = async ({ cyclicImageData, audioEndTime }) => {
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const imageData = cyclicImageData.toImageDataT();
         this.canvas_ctx.putImageData(imageData,
@@ -439,7 +442,7 @@ class WaveDrawerFlexible extends Drawer {
         );
 
         if (this.show_time) {
-            const end_time = audioTime;
+            const end_time = audioEndTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
@@ -501,7 +504,7 @@ class StftDrawerFlexible extends Drawer {
      * 
      * @param {StftData} stftData 具有如下格式的对象：
      *                      {
-     *                          audioTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
+     *                          audioEndTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
      *                          sampleRate:  Number, 音频采样率，单位赫兹（Hz）
      *                          fft_n: 256, 傅里叶变换窗口，单位为采样点个数（1）
      *                          hop_n: 64, 窗之间间隔长，单位为采样点个数（1）
@@ -529,11 +532,11 @@ class StftDrawerFlexible extends Drawer {
         this.cyclicImageData.update(imageData);
         this.setData({
             cyclicImageData: this.cyclicImageData,
-            audioTime: stftData.audioTime,
+            audioEndTime: stftData.audioEndTime,
         });
     };
 
-    draw = async ({ cyclicImageData, audioTime }) => {
+    draw = async ({ cyclicImageData, audioEndTime }) => {
         const imageData = cyclicImageData.toImageDataT();
         const new_height = this.stftAreaHeight;
         // const new_width = new_height * imageData.width / imageData.height;
@@ -546,7 +549,7 @@ class StftDrawerFlexible extends Drawer {
             new_width, new_height,
         );
         if (this.show_time) {
-            const end_time = audioTime;
+            const end_time = audioEndTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);
@@ -594,7 +597,7 @@ class StftDrawer2 extends Drawer {
      * 
      * @param {StftData} stftData 具有如下格式的对象：
      *                      {
-     *                          audioTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
+     *                          audioEndTime: Number, 音频末尾时间戳，用于时间定位，单位毫秒（ms）
      *                          sampleRate:  Number, 音频采样率，单位赫兹（Hz）
      *                          fft_n: 256, 傅里叶变换窗口，单位为采样点个数（1）
      *                          hop_n: 64, 窗之间间隔长，单位为采样点个数（1）
@@ -626,13 +629,13 @@ class StftDrawer2 extends Drawer {
         this.cyclicImageData.update(imageData);
         this.setData({
             cyclicImageData: this.cyclicImageData,
-            audioTime: stftData.audioTime,
+            audioEndTime: stftData.audioEndTime,
         });
     };
 
 
 
-    draw = async ({ cyclicImageData, audioTime }) => {
+    draw = async ({ cyclicImageData, audioEndTime }) => {
         const imageData = cyclicImageData.toImageDataT();
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const new_height = this.stftAreaHeight;
@@ -645,7 +648,7 @@ class StftDrawer2 extends Drawer {
 
         // this.canvas.width - new_width
         if (this.show_time) {
-            const end_time = audioTime;
+            const end_time = audioEndTime;
             this.canvas_ctx.beginPath();
             const dt = 0.5;
             const time_dx = Math.round(dt * this.canvas.width / this.total_duration);

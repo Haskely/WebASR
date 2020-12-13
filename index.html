@@ -3,9 +3,9 @@
 
 <head>
     <script src="./utils/numjs.min.js"></script>
-    <script src="./utils/eruda/eruda.js"></script>
+    <!-- <script src="./utils/eruda/eruda.js"></script>
     <script src="./utils/eruda/eruda-fps.js"></script>
-    <script> eruda.init(); eruda.add(erudaFps);</script>
+    <script> eruda.init(); eruda.add(erudaFps);</script> -->
 </head>
 
 <body>
@@ -44,13 +44,18 @@
     <div id='audios' style="text-align:center;margin:10 auto;"></div>
     <div name="Drawer Area" style="text-align:center;margin:10 auto;width:80%;display: contents;">
         <div style="margin:1 auto;">
-            <canvas id='waveDrawer' width=1000 height=125
-                style="max-width: 95vw;text-align:center;border: 1px solid black;border-radius: 4px;">
+            <canvas id='waveDrawer' width=1000 height=10
+                style="width: 90vw;text-align:center;border: 1px solid black;border-radius: 4px;">
             </canvas>
         </div>
         <div style="margin:1 auto;">
-            <canvas id='stftDrawer' width=1000 height=null
-                style="max-width: 95vw;text-align:center;border: 1px solid black;border-radius: 4px;">
+            <canvas id='stftDrawer' width=1000 height=10
+                style="width: 90vw;text-align:center;border: 1px solid black;border-radius: 4px;">
+            </canvas>
+        </div>
+        <div style="margin:1 auto;">
+            <canvas id='pinyinDrawer' width=1000 height=10
+                style="width: 90vw;text-align:center;border: 1px solid black;border-radius: 4px;">
             </canvas>
         </div>
     </div>

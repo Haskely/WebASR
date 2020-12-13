@@ -135,6 +135,12 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
  */
 function getTypedArrayMatrixClass(TypedArrayClass) {
     class TypedArrayMatrixClass {
+        /**
+         * 
+         * @param {Number} rowsN 
+         * @param {Number} columnsN 
+         * @param {ArrayBuffer} initArrayBuffer 
+         */
         constructor(rowsN, columnsN, initArrayBuffer = null) {
             this.rowsN = rowsN > 0 ? Math.round(rowsN) : 0; //矩阵行数
             this.columnsN = columnsN > 0 ? Math.round(columnsN) : 0; //矩阵列数
@@ -743,8 +749,9 @@ class CyclicTFTensorBuffer {
 
 const CyclicFloat32Array = getCyclicTypedArrayClass(Float32Array);
 // const CyclicUint8ClampedArray = getCyclicTypedArrayClass(Uint8ClampedArray);
+const CyclicArray = getCyclicTypedArrayClass(Array);
 
 const Float32Matrix = getTypedArrayMatrixClass(Float32Array);
 const CyclicFloat32Matrix = getCyclicTypedArrayMatrixClass(Float32Array);
 
-export { CyclicImageData, CyclicFloat32Array, CyclicFloat32Matrix, Float32Matrix }
+export { CyclicImageData, CyclicFloat32Array,CyclicArray, CyclicFloat32Matrix, Float32Matrix }

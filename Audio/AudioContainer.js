@@ -6,17 +6,20 @@ class AudioData {
      * 
      * @param {int32} sampleRate 
      * @param {Array[Float32Array]} channels 
-     * @param {float32} audioTime 
+     * @param {float32} audioEndTime 
      */
-    constructor(sampleRate, channels, audioTime) {
+    constructor(sampleRate, channels, audioEndTime) {
         this.sampleRate = sampleRate;
         this.channels = channels;
-        this.audioTime = audioTime;
+        this.audioEndTime = audioEndTime;
 
         this.numberOfChannels = channels.length;
         this.sampleLength = channels[0].length;
         this.timeLength = this.sampleLength / this.sampleRate;
+        this.audioStartTime = audioEndTime - this.timeLength;
     };
+
+
 };
 
 class StftData {
@@ -26,14 +29,19 @@ class StftData {
      * @param {int32} fft_n 
      * @param {int32} hop_n 
      * @param {Float32Matrix} stft 
-     * @param {float32} audioTime 
+     * @param {float32} audioEndTime 
      */
-    constructor(sampleRate, fft_n, hop_n, stft, audioTime) {
+    constructor(sampleRate, fft_n, hop_n, stft, audioEndTime) {
         this.sampleRate = sampleRate;
         this.fft_n = fft_n;
         this.hop_n = hop_n;
         this.stft = stft;
-        this.audioTime = audioTime;
+        this.audioEndTime = audioEndTime;
+
+        this.timeN = stft.rowsN;
+        this.frequencyN = stft.columnsN;
+        this.timeLength = this.timeN * this.hop_n / this.sampleRate;
+        this.audioStartTime = audioEndTime - this.timeLength;
     };
 };
 
@@ -51,7 +59,7 @@ class AudioDataCyclicContainer {
         for (let i = 0; i < numberOfChannels; i += 1) {
             this.audioCyclicChannels[i] = new CyclicFloat32Array(Math.round(sampleRate * max_duration));
         };
-        this.audioTime = null;
+        this.audioEndTime = null;
     };
 
     get sampleLength() {
@@ -79,7 +87,7 @@ class AudioDataCyclicContainer {
         for (let i = 0; i < audioData.channels.length; i += 1) {
             this.audioCyclicChannels[i].update(audioData.channels[i])
         };
-        this.audioTime = audioData.audioTime;
+        this.audioEndTime = audioData.audioEndTime;
     };
 
     getdata = (startSample = undefined, endSample = undefined) => {
@@ -88,7 +96,7 @@ class AudioDataCyclicContainer {
             this.audioCyclicChannels.map((cyclic_channel) => {
                 return cyclic_channel.toArray(startSample, endSample);
             }),
-            this.audioTime,
+            this.audioEndTime,
         );
     };
 
@@ -96,7 +104,7 @@ class AudioDataCyclicContainer {
         return new AudioData(
             this.sampleRate,
             this.audioCyclicChannels.map(cyclic_channel => cyclic_channel.popArray(popSampleLength)),
-            this.audioTime,
+            this.audioEndTime,
         );
     }
 };
@@ -111,7 +119,9 @@ class StftDataCyclicContainer {
 
         this.stftCyclicMatrix = new CyclicFloat32Matrix(Math.round(sampleRate * max_duration / hop_n), Math.ceil(this.fft_n / 2) + 1);
 
-        this.audioTime = null;
+        this.audioEndTime = null;
+
+        this.frequencyN = this.stftCyclicMatrix.columnsN;
     };
 
     _checkStftData = (stftData) => {
@@ -121,6 +131,10 @@ class StftDataCyclicContainer {
                 if (stftData[prop_name] !== this[prop_name]) throw new Error(`传入的stftData.${[prop_name]}(${stftData[prop_name]})与StftDataCyclicContainer.${[prop_name]}(${this[prop_name]})不相等`);
             };
         };
+    };
+
+    get timeN(){
+        return this.stftCyclicMatrix.curRowsN;
     };
 
     get timeLength() {
@@ -133,9 +147,8 @@ class StftDataCyclicContainer {
 
     updatedata = (stftData) => {
         this.stftCyclicMatrix.update(stftData.stft);
-        this.audioTime = stftData.audioTime;
+        this.audioEndTime = stftData.audioEndTime;
     };
-
 
     getdata = () => {
         return new StftData(
@@ -143,7 +156,7 @@ class StftDataCyclicContainer {
             this.fft_n,
             this.hop_n,
             this.stftCyclicMatrix.toMatrix(),
-            this.audioTime,
+            this.audioEndTime,
         );
     };
 };

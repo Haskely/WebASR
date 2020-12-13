@@ -1,11 +1,20 @@
 import { CyclicImageData } from '../utils/CyclicContainer.js';
+import { createElement } from '../utils/other_utils.js';
 
 class Drawer {
     constructor(id = 'DrawerCanvas', width = 600, height = 400) {
 
         this.canvas = document.querySelector(`canvas#${id}`);
         if (!this.canvas) {
-            $('body').append(`<div style="margin:1 auto;"><canvas id='${id}' width="${Math.round(width)}" height="${Math.round(height)}" style="max-width: 95vw;text-align:center;border: 1px solid black;border-radius: 4px;"></canvas></div>`);
+            const div = createElement('div',{style:'text-align:center;'});
+            const canvas = createElement('canvas',{
+                id:id,
+                width:Math.round(width),
+                height:Math.round(height),
+                style:"margin:1 auto;width: 90vw;text-align:center;border: 1px solid black;border-radius: 4px;"
+            });
+            div.appendChild(canvas);
+            document.body.append(div);
             this.canvas = document.querySelector(`#${id}`);
         } else {
             this.canvas.width = width;

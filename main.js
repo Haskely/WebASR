@@ -1,20 +1,10 @@
 "use strict";
 import { AudioFlow } from './Audio/AudioFlow.js';
-import { MyWorker } from './Workers/MyWorker.js';
+import { ASRWorker } from './ASR/Worker/ASRWorker.js';
 import { createElementNS } from './utils/other_utils.js';
-
-//基础配置
-const sampleRate = 8000, numberOfChannels = 1, bufferSize = 256, fft_s = 0.032, hop_s = 0.008;
-/**
- * sampleRate 音频采样率，每秒钟采样音频的次数。可设置为8000,16000,32000,48000
- * numberOfChannels 音频声道数。可设置为1,2,3,4,5
- * bufferSize 流式音频原子切片大小，单位是采样点。这样你的刷新帧率就是sampleRate/bufferSize。
- * 
- * fft_s 短时傅里叶变换的傅里叶窗长，单位为秒。
- * hop_s 短时傅里叶变换的相邻窗的滑动长度，单位为秒。这样你的相邻窗口重叠长度就为 fft_s - hop_s 秒。
- */
-//配置完毕
-
+import { CyclicArray } from './utils/CyclicContainer.js';
+import { PinYinDrawer } from './ASR/Label/PinYinDrawer.js';
+import Stats from './utils/stats/stats.module.js';
 // 获取页面元素
 const audio_input = document.querySelector('#audio_input');
 const audio_input_btn = document.querySelector('#audio_input_btn');
@@ -151,81 +141,122 @@ open_model_btn.onclick = function (e) {
         open_model_btn.querySelector('#center').appendChild(animate);
 
         pinyin_text.textContent = "";
-        full_pinyinArray = [];
-        last_py = null;
     };
 };
 // 页面元素事件设置完毕
 
 
 // 设置音频处理流程
-const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
-audioFlow.open();
-audioFlow.openStft(fft_s, hop_s, 10);
-audioFlow.openWaveDraw('waveDrawer', undefined, undefined, 10, false);
-audioFlow.openStftDraw('stftDrawer', undefined, undefined, 10, false);
+//基础配置
+const numberOfChannels = 1, bufferSize = 256;
+const max_each_predict_time_s = 10;
+const min_each_predict_pinyin_num = 4;
+let _x = Math.floor(min_each_predict_pinyin_num/2);
+const overlap_predict_pinyin_num  = _x + _x%2;
+/**
+ * 
+ * numberOfChannels 音频声道数。可设置为1,2,3,4,5
+ * bufferSize 流式音频原子切片大小，单位是采样点。这样你的刷新帧率就是sampleRate/bufferSize。
+ * 
+ */
+//配置完毕
+let audioFlow;
+const asrWorker = new ASRWorker('./ASR/Worker/ASRWorkerScript.js');
+asrWorker.onReciveFeatureInfo = (featureInfo) => {
+    /**
+     * sampleRate 音频采样率，每秒钟采样音频的次数。可设置为8000,16000,32000,48000
+     * fft_s 短时傅里叶变换的傅里叶窗长，单位为秒。
+     * hop_s 短时傅里叶变换的相邻窗的滑动长度，单位为秒。这样你的相邻窗口重叠长度就为 fft_s - hop_s 秒。
+     */
+    const {sampleRate,fft_s,hop_s} = featureInfo;
+    audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
+    audioFlow.open();
+    audioFlow.openStft(fft_s, hop_s, 10);
+    audioFlow.openWaveDraw('waveDrawer', undefined, undefined, 10, false);
+    audioFlow.openStftDraw('stftDrawer', undefined, undefined, 10, false);
 
-let last_py = '_';
-let full_pinyinArray = [];
-const myWorker = new MyWorker('./Workers/AudioProcesserWorker.js');
-myWorker.reciveData('pinyinArray', (pinyinArray) => {
+
+    const stats = new Stats();
+    stats.dom.style.cssText = "";
+    document.querySelector('#stats').appendChild(stats.dom);
+    audioFlow.reciveStftDataEvent.addListener(
+        (stftData) => {
+            stats.update();
+            if (is_open_model) {
+                asrWorker.sendStftData(stftData);
+            };
+        },
+        'model'
+    );
+};
+let pinyinDrawer;
+asrWorker.onReciveModelInfo = (modelInfo) => {
+    const {viewK} = modelInfo;
+    const each_pinyin_timelen = asrWorker.featureInfo.hop_s*viewK;
+    const max_each_predict_pinyin_num = Math.ceil(max_each_predict_time_s / each_pinyin_timelen);
+
+    asrWorker.setPredictConfig(
+        max_each_predict_pinyin_num,min_each_predict_pinyin_num,overlap_predict_pinyin_num
+    );
+
+    pinyinDrawer = new PinYinDrawer('pinyinDrawer',10,each_pinyin_timelen);
+};
+asrWorker.onReadyToPredict = () => {
+    open_model_btn.querySelector('#center').setAttribute('fill', 'red');
+    open_model_btn.disabled = false;
+};
+asrWorker.onRecivePredictResult = (predictResults) => {
+    const origin_pinyinArray = predictResults.pinyinArray;
+    showOriginPinYinArray(origin_pinyinArray);
+
+    const keeped_pinyinArray = origin_pinyinArray.slice(overlap_predict_pinyin_num/2,-overlap_predict_pinyin_num/2);
+    const eachPinYinTime_s = predictResults.timeLength / origin_pinyinArray.length;
+    const keeped_startTime = predictResults.audioStartTime + eachPinYinTime_s;
+    const keeped_endTime = predictResults.audioEndTime - eachPinYinTime_s;
+    dealPinYinArray(keeped_pinyinArray);
+    pinyinDrawer.updatePinYinData(keeped_pinyinArray,keeped_endTime,audioFlow.lastAudioData.audioEndTime);
+};
+
+
+function showOriginPinYinArray(origin_pinyinArray){
     oripinyin_list.animate([{ backgroundColor: 'orange' }, { backgroundColor: 'white' }], {
         // timing options
         duration: 1000,
     });
     oripinyin_list.textContent = "";
-    for (let py of pinyinArray) {
+    for (let py of origin_pinyinArray) {
         oripinyin_list.textContent += ` ${py}`;
+    };
+};
+
+const cyclicPinYinArray = new CyclicArray(100);
+function dealPinYinArray(pinyinArray) {
+    cyclicPinYinArray.update(pinyinArray);
+    const fullPinYinArray = cyclicPinYinArray.toArray();
+    pinyin_text.textContent = "";
+    let last_py = '_';
+    for (let py of fullPinYinArray) {
         if (py !== '_' && py !== last_py) {
-            full_pinyinArray.push(py);
             pinyin_text.textContent += ` ${py}`;
         };
         last_py = py;
     };
-});
-myWorker.reciveData('Event', (content) => {
-    switch (content) {
-        case 'created':
-            console.log('myWorkerScript Created!');
-            myWorker.sendData('initInfo', {
-                sampleRate, fft_s, hop_s, numberOfChannels: 1, max_duration: 3
-            });
-            break;
-        case 'inited':
-            console.log('myWorkerScript Inited!');
-            // open_model_btn.textContent = "OpenModel";
-            open_model_btn.querySelector('#center').setAttribute('fill', 'red');
-            open_model_btn.disabled = false;
-            break;
-        default:
-            console.error(`[MainThread]收到未知Event:${content}`);
-    };
-});
+    is_awake(fullPinYinArray)
+};
 
-import Stats from './utils/stats/stats.module.js';
-const stats = new Stats();
-stats.dom.style.cssText = "";
-document.querySelector('#stats').appendChild(stats.dom);
-audioFlow.reciveStftDataEvent.addListener(
-    (stftData) => {
-        stats.update();
-        const stftData_Clip = stftData;
-        if (is_open_model) {
-            myWorker.sendData(
-                'stftData',
-                {
-                    sampleRate: stftData_Clip.sampleRate,
-                    fft_n: stftData_Clip.fft_n,
-                    hop_n: stftData_Clip.hop_n,
-                    stft: {
-                        stftMartrixArrayBuffer: stftData_Clip.stft.arrayBuffer,
-                        stftMartrixHeight: stftData_Clip.stft.rowsN,
-                        stftMartrixWidth: stftData_Clip.stft.columnsN,
-                    },
-                    audioTime: stftData_Clip.audioTime,
-                },
-                [stftData_Clip.stft.arrayBuffer],
-            );
-        };
-    },
-    'model');
+let awake_pinyin_list = ["xiao","xing","xiao","xing"];
+const awake_threshold = 0.1;
+function is_awake(pinyinList){
+    const pyLen = awake_pinyin_list.length;
+    const needed_pyList = pinyinList.slice(-pyLen);
+    let dis = 0;
+    for (let i=0;i<pyLen;i+=1){
+        dis += cal_pinyin_distance(needed_pyList[i],awake_pinyin_list[i])
+    };
+    if(dis < awake_threshold) console.log("AWAKE!")
+};
+
+function cal_pinyin_distance(py1,py2){
+    if(py1 == py2) return 0;
+    return 1;
+};

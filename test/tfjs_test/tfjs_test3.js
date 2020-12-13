@@ -4,7 +4,7 @@
 // import '../../test/test_utils.js'
 
 async function init_model() {
-    const modelUrl = './tensorflowjs/tfjsModel/tfjs_savedModel/model.json';
+    const modelUrl = '.ASR/Model/tensorflowjs/tfjsModel/tfjs_savedModel/model.json';
     const model = await tf.loadGraphModel(modelUrl);
     return model;
 };
