@@ -100,7 +100,7 @@ class AudioDataCyclicContainer {
         );
     };
 
-    popdata = (popSampleLength) => {
+    popdata = (popSampleLength = undefined) => {
         return new AudioData(
             this.sampleRate,
             this.audioCyclicChannels.map(cyclic_channel => cyclic_channel.popArray(popSampleLength)),

@@ -1,6 +1,0 @@
-{
-    "name":"logstft",
-    "sampleRate":8000,
-    "fft_s":0.032,
-    "hop_s":0.008
-}

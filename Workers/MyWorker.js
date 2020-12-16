@@ -1,7 +1,22 @@
 
+
+class AsyncExcuteID{
+    constructor(){
+        this.IDs = new Uint32Array(1);
+    };
+
+    get = () => {
+        this.IDs[0] += 1;
+        return this.IDs[0];
+    };
+};
+
 class MyWorker {
     constructor(WebWorkScriptURL) {
         this.WebWorkScriptURL = WebWorkScriptURL;
+        this.CreatePromise = new Promise(resolve => {
+            this.createdResolve = resolve;
+        });
         this.Worker = new Worker(WebWorkScriptURL);
         this.Worker.onmessage = ({ data }) => {
             if (this.reciveDataFunctions[data.type] instanceof Function) {
@@ -23,6 +38,33 @@ class MyWorker {
             console.error(`[MyWorker]发送给${this.WebWorkScriptURL}的data.type为:${data.type}的数据其MyWorkerScript没有注册处理函数！`);
             console.log(data);
         });
+        this.reciveAsyncWorkerFunctions = {};
+        this.reciveData('ExecuteFunctionReturn',({theReturn,excuteID}) =>  {
+            this.reciveAsyncWorkerFunctions[excuteID](theReturn);
+        });
+
+        this.asyncExcuteID = new AsyncExcuteID();
+
+        this.reciveData('Created',()=>{
+            this.createdResolve();
+        });
+    };
+
+
+
+    executeAsyncWorkerFunction = (functionID,...args) => {
+        const excuteID = this.asyncExcuteID.get();
+        this.sendData('ExecuteFunction',{
+            functionID,args,excuteID
+        });
+
+        return new Promise(resolve => {
+            this.reciveAsyncWorkerFunctions[excuteID] = resolve;
+        });
+    };
+
+    getAsyncWorkerFunction = (functionID) => {
+        return (...args) => this.executeAsyncWorkerFunction(functionID,...args);
     };
 
     sendData = (dataType, dataContent, transferList = []) => {
@@ -66,10 +108,23 @@ class MyWorkerScript {
             // event.reason  - the unhandled error object
             this.sendData('Error', event.reason);
         });
+
+        this.worker_self.console.log = (msg) => this.sendData('Log', msg);
+        this.worker_self.console.warn = (msg) => this.sendData('Warn', msg);
+        this.worker_self.console.error = (msg) => this.sendData('Error', msg);
+        this.asyncFunctions = {};
+        this.reciveData('ExecuteFunction',async ({functionID,args,excuteID}) => {
+            const theReturn = await this.asyncFunctions[functionID](...args);
+            this.sendData('ExecuteFunctionReturn',{
+                theReturn,excuteID
+            });
+        });
+        this.sendData('Created',null);
     };
 
-    log = (msg) => {
-        this.sendData('Log', msg);
+    registerFunctionID = (functionID,fn) => {
+        if (functionID in this.asyncFunctions) console.warn(`警告！functionID:"${functionID}"已经存在`)
+        this.asyncFunctions[functionID] = fn;
     };
 
     sendData = (dataType, dataContent, transferList = [], targetOrigin = undefined) => {

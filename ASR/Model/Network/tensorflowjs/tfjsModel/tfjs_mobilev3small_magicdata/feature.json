@@ -1,0 +1,19 @@
+{
+    "ClassName": "AcousticDataParser",
+    "config": {
+        "feature_config": {
+            "name": "logstft",
+            "kwargs": {
+                "target_sr": 8000,
+                "is_norm": true,
+                "is_cut_mute": true,
+                "fft_s": 0.032,
+                "hop_s": 0.008,
+                "stft_type": "numpy"
+            }
+        },
+        "label_type": "pinyin",
+        "cache_dir": "/ext/speech_cache",
+        "open_cache": true
+    }
+}

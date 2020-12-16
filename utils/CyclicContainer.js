@@ -80,7 +80,15 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
                 };
                 this.endPoint = containerIndex;
             };
+
+            this.onUpdate(this);
         };
+
+        /**
+         * 
+         * @param {CyclicTypedArray} cyclicArray 
+         */
+        onUpdate = (cyclicTypedArray) => {};
 
         toArray(s = 0, e = this.length) {
             const size = this.size;
@@ -115,7 +123,7 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
             return typedArray;
         };
 
-        popArray(popLength, fromEnd = false) {
+        popArray(popLength = this.length, fromEnd = false) {
             let typedArray;
             if (fromEnd) {
                 typedArray = this.toArray(-popLength);
