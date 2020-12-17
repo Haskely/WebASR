@@ -118,8 +118,6 @@ class AudioFlow extends AudioFlowProcesser {
             this.waveDrawer = new WaveDrawer(id, this.sampleRate, this.numberOfChannels, total_duration, show_time);
             if (show_fps) {
                 const stats = new Stats();
-                // stats.dom.style.cssText = "";
-                // document.querySelector('#stats').appendChild(stats.dom);
                 document.body.appendChild(stats.dom);
                 this.reciveAudioDataEvent.addListener(() => { stats.update(); }, "waveDrawerStats");
             };
@@ -245,7 +243,7 @@ class AudioFlow extends AudioFlowProcesser {
             return true;
         };
         const getFlowPredictConfig = (maxPinYinN, minPinYinN, overlapPinYinN, viewK) => {
-            // flowPredictConfig = { maxPinYinN, minPinYinN, overlapPinYinN };
+
             const maxStftTimeN = maxPinYinN * viewK;
             const stftDataCyclicContainer = new StftDataCyclicContainer(
                 asrModel.feature.sampleRate,
