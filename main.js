@@ -151,7 +151,7 @@ const numberOfChannels = 1, bufferSize = 256, total_duration = 10;
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
 const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/';
 const minPinYinN = 10;
-const useWebWorker = true;
+const useWebWorker = false;
 /**
  * 
  * numberOfChannels 音频声道数。整数，默认为1。支持的值最多为32。
