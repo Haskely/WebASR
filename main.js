@@ -147,21 +147,37 @@ open_model_btn.onclick = function (e) {
 
 // 设置音频处理流程
 //基础配置
-const sampleRate = 8000, numberOfChannels = 1, bufferSize = 256, total_duration = 10
+const numberOfChannels = 1, bufferSize = 256, total_duration = 10;
+const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
+const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/';
+const minPinYinN = 10;
+const useWebWorker = true;
 /**
  * 
- * numberOfChannels 音频声道数。可设置为1,2,3,4,5
- * bufferSize 流式音频原子切片大小，单位是采样点。这样你的刷新帧率就是sampleRate/bufferSize。
+ * numberOfChannels 音频声道数。整数，默认为1。支持的值最多为32。
+ * bufferSize 以采样帧为单位的缓冲区大小。
+ *            必须是以下值之一:0、256、512、1024、2048、4096、8192、16384。为0时系统自动选择。
+ *            这样你的刷新帧率就是sampleRate/bufferSize。
+ * total_duration 以下各种音频绘制的时间总长度。
  * 
+ * sampleRate 音频采样率
+ * fft_s 一个短时傅里叶变换的窗长，单位为秒
+ * hop_s 窗之间间隔长，单位为秒
+ * 注意：以上三个参数应该与下面ModelDir文件夹下feature.json中的参数一致，否则模型将加载失败。
+ * 
+ * ModelDir TensorflowJS 模型文件夹，该文件夹下应该存在一个model.json,一个feature.json,若干个.bin文件。
+ * minPinYinN 正整数，流式模型推断音频最小的长度；如果为4，则一次推断输出4个拼音片段，并保留中间两个；下一次推断与这次推断的覆盖长度为4/2 = 2.
+ * useWebWorker 是否使用异步进行模型推断；若为false，则模型推断与音频刷新同步进行，大概率导致音频卡顿，但是保证实时率。
+ *              若为true，则推断异步进行，不会阻塞音频流逝，但推断输出一般会有积压延迟。
  */
 //配置完毕
 
 const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
 audioFlow.open();
-audioFlow.openStft(0.032, 0.008);
+audioFlow.openStft(fft_s, hop_s);
 audioFlow.openWaveDraw('waveDrawer', total_duration, false,true);
 audioFlow.openStftDraw('stftDrawer', total_duration, false);
-audioFlow.openASR(undefined, total_duration, 3, true).then((recivePredictResultEvent) => {
+audioFlow.openASR(ModelDir, total_duration, minPinYinN, useWebWorker).then((recivePredictResultEvent) => {
     audioFlow.suspendASR();
     open_model_btn.querySelector('#center').setAttribute('fill', 'red');
     open_model_btn.disabled = false;

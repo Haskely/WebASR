@@ -305,13 +305,9 @@ class AudioFlow extends AudioFlowProcesser {
         const cyclicPinYinArray = new CyclicArray(Math.ceil(keeping_duration / eachPinYinTime));
         this.pinyinEndTime = null;
         if (this.recivePredictResultEvent.hasListener('keepASR')) this.recivePredictResultEvent.removeListener('keepASR');
-        const sliceN = this.flowPredictConfig.overlapPinYinN/2;
+        const overlapPinYinN = this.flowPredictConfig.overlapPinYinN;
         this.recivePredictResultEvent.addListener((predictResult) => {
-            const origin_pinyinArray = predictResult.pinyinArray;
-            const keeped_pinyinArray = origin_pinyinArray.slice(sliceN, -sliceN);
-            const eachPinYinTime_s = predictResult.timeLength / origin_pinyinArray.length;
-            const keeped_startTime = predictResult.audioStartTime + eachPinYinTime_s*sliceN;
-            const keeped_endTime = predictResult.audioEndTime - eachPinYinTime_s*sliceN;
+            const {keeped_pinyinArray,keeped_endTime} = getKeepedPinYinArray(predictResult,overlapPinYinN);
             cyclicPinYinArray.update(keeped_pinyinArray);
             this.pinyinEndTime = keeped_endTime;
         }, 'keepASR');
@@ -329,13 +325,9 @@ class AudioFlow extends AudioFlowProcesser {
         if (!this.recivePredictResultEvent) throw new Error("还未开启openASR,没有predictResult数据!");
         if (!this.recivePredictResultEvent.hasListener("pinyinDrawer.updatePinYinData")) {
             this.pinyinDrawer = new PinYinDrawer(id, total_duration, this.asrModel.eachOutPutTime);
-            const sliceN = this.flowPredictConfig.overlapPinYinN/2;
+            const overlapPinYinN = this.flowPredictConfig.overlapPinYinN;
             this.recivePredictResultEvent.addListener((predictResult) => {
-                const origin_pinyinArray = predictResult.pinyinArray;
-                const keeped_pinyinArray = origin_pinyinArray.slice(sliceN, -sliceN);
-                const eachPinYinTime_s = predictResult.timeLength / origin_pinyinArray.length;
-                const keeped_startTime = predictResult.audioStartTime + eachPinYinTime_s*sliceN;
-                const keeped_endTime = predictResult.audioEndTime - eachPinYinTime_s*sliceN;
+                const {keeped_pinyinArray,keeped_endTime} = getKeepedPinYinArray(predictResult,overlapPinYinN);
                 this.pinyinDrawer.updatePinYinData(keeped_pinyinArray, keeped_endTime, this.lastAudioData.audioEndTime);
             }, "pinyinDrawer.updatePinYinData");
             // this.reciveAudioDataEvent.addListener((audioData)=>{
@@ -357,6 +349,16 @@ class AudioFlow extends AudioFlowProcesser {
 
 
 };
+
+function getKeepedPinYinArray(predictResult,overlapPinYinN){
+    const sliceN = overlapPinYinN/2;
+
+    const keeped_pinyinArray = predictResult.pinyinArray.slice(sliceN,-sliceN);
+    const eachPinYinTime_s = predictResult.timeLength / predictResult.pinyinArray.length;
+    const keeped_startTime = predictResult.audioStartTime + eachPinYinTime_s*sliceN;
+    const keeped_endTime = predictResult.audioEndTime - eachPinYinTime_s*sliceN;
+    return {keeped_pinyinArray,keeped_endTime}
+}
 
 export { AudioFlow };
 
