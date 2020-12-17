@@ -157,10 +157,10 @@ const useWebWorker = false;
  * numberOfChannels 音频声道数。整数，默认为1。支持的值最多为32。
  * bufferSize 以采样帧为单位的缓冲区大小。
  *            必须是以下值之一:0、256、512、1024、2048、4096、8192、16384。为0时系统自动选择。
- *            这样你的刷新帧率就是sampleRate/bufferSize。
+ *            这时你的刷新帧率就是sampleRate/bufferSize。
  * total_duration 以下各种音频绘制的时间总长度。
  * 
- * sampleRate 音频采样率
+ * sampleRate 音频采样率 可取 8000、16000、32000、48000 之一
  * fft_s 一个短时傅里叶变换的窗长，单位为秒
  * hop_s 窗之间间隔长，单位为秒
  * 注意：以上三个参数应该与下面ModelDir文件夹下feature.json中的参数一致，否则模型将加载失败。
