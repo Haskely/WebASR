@@ -230,9 +230,8 @@ class AudioFlow extends AudioFlowProcesser {
             return this.recivePredictResultEvent;
         };
 
-        const recivePredictResultEvent = new MyEvent();
-
-
+        const asrModel = useWebWorker ? new WorkerASRModel() : new ASRModel();
+        await asrModel.init(ModelDir);
         const is_same_featureConfig = (featureConfig) => {
             for (let prop_name of ['name', 'sampleRate', 'fft_s', 'hop_s']) {
                 if (featureConfig[prop_name] !== this.logstftFeature[prop_name]) {
@@ -242,61 +241,58 @@ class AudioFlow extends AudioFlowProcesser {
             };
             return true;
         };
-        const getFlowPredictConfig = (maxPinYinN, minPinYinN, overlapPinYinN, viewK) => {
+        if (!is_same_featureConfig(asrModel.featureConfig)) throw Error("ASR开启失败，模型特征配置与本AudioFlow不一致");
 
-            const maxStftTimeN = maxPinYinN * viewK;
-            const stftDataCyclicContainer = new StftDataCyclicContainer(
-                asrModel.feature.sampleRate,
-                asrModel.feature.fft_n,
-                asrModel.feature.hop_n,
-                maxStftTimeN * asrModel.feature.hop_s,
-            );
-            const eachStftFlattenN = minPinYinN * viewK * stftDataCyclicContainer.frequencyN;
-            const overlapStftFlattenN = overlapPinYinN * viewK * stftDataCyclicContainer.frequencyN;
-            return { stftDataCyclicContainer, eachStftFlattenN, overlapStftFlattenN }
-        };
-        const asrModel = useWebWorker ? new WorkerASRModel() : new ASRModel();
-        await asrModel.init(ModelDir);
         const maxPinYinN = Math.ceil(maxPredictTime / asrModel.featureConfig.hop_s / asrModel.viewK);
         const _x = Math.floor(minPinYinN / 2);
         const overlapPinYinN = _x + _x % 2;
 
         this.flowPredictConfig = { maxPinYinN, minPinYinN, overlapPinYinN };
-        const { stftDataCyclicContainer, eachStftFlattenN, overlapStftFlattenN } = getFlowPredictConfig(maxPinYinN, minPinYinN, overlapPinYinN, asrModel.viewK)
+        const getFlowPredictConfig = (maxPinYinN, minPinYinN, overlapPinYinN, viewK) => {
 
-        const predictStftDataFlow = (stftData) => {
-            stftDataCyclicContainer.updatedata(stftData);
-            const cur_stft_flattenLen = stftDataCyclicContainer.stftCyclicMatrix.length;
-            if (cur_stft_flattenLen >= eachStftFlattenN) {
-                const full_stftData = stftDataCyclicContainer.getdata();
-                stftDataCyclicContainer.cleardata(cur_stft_flattenLen - overlapStftFlattenN);
+            const maxStftTimeN = maxPinYinN * viewK;
+            const stftDataFlowCyclicContainer = new StftDataCyclicContainer(
+                asrModel.feature.sampleRate,
+                asrModel.feature.fft_n,
+                asrModel.feature.hop_n,
+                maxStftTimeN * asrModel.feature.hop_s,
+            );
+            const eachStftTimeN = minPinYinN * viewK;
+            const overlapStftTimeN = overlapPinYinN * viewK;
+            return { stftDataFlowCyclicContainer, eachStftTimeN, overlapStftTimeN }
+        };
+        const { stftDataFlowCyclicContainer, eachStftTimeN, overlapStftTimeN } = getFlowPredictConfig(maxPinYinN, minPinYinN, overlapPinYinN, asrModel.viewK)
 
-                return asrModel.predictStftData(full_stftData);
-            } else {
-                return null;
+        const setFlowPredictStftData = (stftData) => {
+            stftDataFlowCyclicContainer.updatedata(stftData);
+            predictStftDataFlow();
+        };
+        const recivePredictResultEvent = new MyEvent();
+        const predictStftDataFlow = async () => {
+            if (this.isASRSuspended) return;
+            const cur_stft_timeN = stftDataFlowCyclicContainer.timeN;
+            if (cur_stft_timeN >= eachStftTimeN) {
+                const full_stftData = stftDataFlowCyclicContainer.getdata();
+                stftDataFlowCyclicContainer.cleardata(cur_stft_timeN - overlapStftTimeN);
+                const predictResult = await asrModel.predictStftData(full_stftData)
+                recivePredictResultEvent.trigger(predictResult);
             };
+            // setTimeout(predictStftDataFlow,1000);
         };
         if (!this.reciveStftDataEvent) this.openStft(asrModel.featureConfig.fft_s, asrModel.featureConfig.hop_s);
-        if (!is_same_featureConfig(asrModel.featureConfig)) throw Error("ASR开启失败，模型特征配置与本AudioFlow不一致")
-        this.reciveStftDataEvent.addListener(async (stftData) => {
-            const predictResult = await predictStftDataFlow(stftData);
-            if (predictResult) recivePredictResultEvent.trigger(predictResult);
-        }, 'ASRPredict');
+        this.reciveStftDataEvent.addListener(setFlowPredictStftData, 'ASRPredict');
+        this.isASRSuspended = true;
+        this.suspendASR = () => {
+            this.isASRSuspended = true;
+        };
+        this.resumeASR = () => {
+            this.isASRSuspended = false;
+            predictStftDataFlow();
+        };
+        this.resumeASR();
         this.asrModel = asrModel;
         this.recivePredictResultEvent = recivePredictResultEvent;
         return recivePredictResultEvent;
-    };
-
-    suspendASR = () => {
-        if (this.recivePredictResultEvent) {
-            this.reciveStftDataEvent.suspendListener('ASRPredict');
-        };
-    };
-
-    resumeASR = () => {
-        if (this.recivePredictResultEvent) {
-            this.reciveStftDataEvent.resumeListener('ASRPredict');
-        };
     };
 
     keepASR = (keeping_duration = 3) => {
@@ -330,9 +326,9 @@ class AudioFlow extends AudioFlowProcesser {
                 const {keeped_pinyinArray,keeped_endTime} = getKeepedPinYinArray(predictResult,overlapPinYinN);
                 this.pinyinDrawer.updatePinYinData(keeped_pinyinArray, keeped_endTime, this.lastAudioData.audioEndTime);
             }, "pinyinDrawer.updatePinYinData");
-            // this.reciveAudioDataEvent.addListener((audioData)=>{
-            //     this.pinyinDrawer.updateAudioEndTime(this.lastAudioData.audioEndTime);
-            // });
+            this.reciveAudioDataEvent.addListener((audioData)=>{
+                this.pinyinDrawer.updateAudioEndTime(this.lastAudioData.audioEndTime);
+            });
         };
     };
 

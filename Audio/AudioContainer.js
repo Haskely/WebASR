@@ -141,8 +141,8 @@ class StftDataCyclicContainer {
         return this.stftCyclicMatrix.curRowsN * this.hop_n / this.sampleRate;
     };
 
-    cleardata = (clearLength = undefined) => {
-        this.stftCyclicMatrix.clear(clearLength);
+    cleardata = (cleartimeN = undefined) => {
+        this.stftCyclicMatrix.clear(cleartimeN);
     };
 
     updatedata = (stftData) => {

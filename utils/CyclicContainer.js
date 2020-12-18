@@ -193,9 +193,13 @@ function getCyclicTypedArrayMatrixClass(TypedArrayClass) {
 
         get endRowPoint() {
             return this.endPoint / this.columnsN;
-        }
+        };
 
-        clear = (clearLength = this.length, fromEnd = false) => {
+        clear = (clearRowsN = this.curRowsN, fromEnd = false) => {
+            this._clear(clearRowsN * this.columnsN,fromEnd);
+        };
+
+        _clear = (clearLength = this.length, fromEnd = false) => {
             if (clearLength < this.length) {
                 this.length -= clearLength;
                 if (fromEnd) {

@@ -1,6 +1,59 @@
 "use strict";
+// 设置音频处理流程
+//基础配置
+const numberOfChannels = 1, bufferSize = 256, total_duration = 10;
+const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
+// const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/';
+const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_magicdata/';
+const minPinYinN = 10;
+const useWebWorker = true;
+/**
+ * 
+ * numberOfChannels 音频声道数。整数，默认为1。支持的值最多为32。
+ * bufferSize 以采样帧为单位的缓冲区大小。
+ *            必须是以下值之一:0、256、512、1024、2048、4096、8192、16384。为0时系统自动选择。
+ *            这时你的刷新帧率就是sampleRate/bufferSize。
+ * total_duration 以下各种音频绘制的时间总长度。
+ * 
+ * sampleRate 音频采样率 可取 8000、16000、32000、48000 之一
+ * fft_s 一个短时傅里叶变换的窗长，单位为秒
+ * hop_s 窗之间间隔长，单位为秒
+ * 注意：以上三个参数应该与下面ModelDir文件夹下feature.json中的参数一致，否则模型将加载失败。
+ * 
+ * ModelDir TensorflowJS 模型文件夹，该文件夹下应该存在一个model.json,一个feature.json,若干个.bin文件。
+ * minPinYinN 正整数，流式模型推断音频最小的长度；如果为4，则一次推断输出4个拼音片段，并保留中间两个；下一次推断与这次推断的覆盖长度为4/2 = 2.
+ * useWebWorker 是否使用异步进行模型推断；若为false，则模型推断与音频刷新同步进行，大概率导致音频卡顿，但是保证实时率。
+ *              若为true，则推断异步进行，不会阻塞音频流逝，但推断输出一般会有积压延迟。
+ */
+//配置完毕
+
 import { AudioFlow } from './Audio/AudioFlow.js';
 import { createElementNS } from './utils/other_utils.js';
+const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
+audioFlow.open();
+audioFlow.openStft(fft_s, hop_s);
+audioFlow.openWaveDraw('waveDrawer', total_duration, false,true);
+audioFlow.openStftDraw('stftDrawer', total_duration, false);
+audioFlow.openASR(ModelDir, total_duration, minPinYinN, useWebWorker).then((recivePredictResultEvent) => {
+    audioFlow.suspendASR();
+    open_model_btn.active();
+
+    recivePredictResultEvent.addListener((predictResult) => {
+        const origin_pinyinArray = predictResult.pinyinArray;
+        showOriginPinYinArray(origin_pinyinArray);
+    }, 'showOriginPinYinArray');
+
+    audioFlow.openASRDraw('pinyinDrawer', total_duration);
+    audioFlow.keepASR(total_duration).onUpdate = (cyclicPinYinArray) => {
+        dealPinYinArray(cyclicPinYinArray.toArray());
+    };
+
+    audioFlow.openVoiceWakeUp();
+}).catch((reason) => {
+    console.log(reason);
+    console.error("模型加载失败！");
+    open_model_btn.disable();
+});
 
 // 获取页面元素
 const audio_input = document.querySelector('#audio_input');
@@ -71,6 +124,7 @@ record_btn.onclick = async (e) => {
                     audio: true,
                 });
             audioFlow.addAudioSource(stream);
+            record_btn.setAttribute("title","正在录音，点击停止");
             // e.target.textContent = 'StopRecord';
             const animate = document.createElementNS("http://www.w3.org/2000/svg", 'animate');
             animate.setAttribute('attributeName', 'opacity');
@@ -80,7 +134,8 @@ record_btn.onclick = async (e) => {
             record_btn.querySelector('#center').appendChild(animate);
 
         } else {
-            console.log('navigator.mediaDevices.getUserMedia not supported on your browser! 所以你的浏览器没法录音。');
+            console.error('navigator.mediaDevices.getUserMedia not supported on your browser! 所以你的浏览器没法录音。');
+            record_btn.setAttribute("title","录音功能不可用，请检查控制台与浏览器兼容性");
             record_btn.querySelector('#outer').setAttribute('fill', 'gray');
             e.target.disabled = true;
         };
@@ -99,6 +154,7 @@ record_btn.onclick = async (e) => {
 switch_btn.onclick = function (e) {
     if (audioFlow.isRunning()) {
         audioFlow.stop();
+        switch_btn.setAttribute("title","点击开始音频流");
         // e.target.textContent = "Start";
         switch_btn.querySelector('rect').remove();
         const path = document.createElementNS("http://www.w3.org/2000/svg", 'path');
@@ -108,6 +164,7 @@ switch_btn.onclick = function (e) {
         switch_btn.querySelector('svg').appendChild(path);
     } else {
         audioFlow.start();
+        switch_btn.setAttribute("title","点击暂停音频流");
         // e.target.textContent = "Stop";
         switch_btn.querySelector('#cricle_triangle').remove();
         const rect = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
@@ -118,82 +175,46 @@ switch_btn.onclick = function (e) {
 
 };
 
-let is_open_model = false;
-open_model_btn.disabled = true;
-open_model_btn.querySelector('#center').setAttribute('fill', 'gray');
-// open_model_btn.textContent = "ModelLoading...";
+
+open_model_btn.disable = () => {
+    open_model_btn.disabled = true;
+    open_model_btn.setAttribute("title","模型加载失败，请检查控制台输出");
+    open_model_btn.querySelector('#center').setAttribute('fill', 'gray');
+};
+open_model_btn.active = () => {
+    open_model_btn.disabled = false;
+    open_model_btn.setAttribute("title","模型加载完成，点击启动");
+    open_model_btn.querySelector('#center').setAttribute('fill', 'red');
+};
+open_model_btn.close = () => {
+    open_model_btn.is_opened = false;
+    open_model_btn.setAttribute("title","点击恢复模型");
+    open_model_btn.querySelector('animate').remove();
+};
+open_model_btn.open = () => {
+    open_model_btn.is_opened = true;
+    open_model_btn.setAttribute("title","点击暂停模型");
+    const animate = document.createElementNS("http://www.w3.org/2000/svg", 'animate');
+    animate.setAttribute('attributeName', 'opacity');
+    animate.setAttribute('values', '1;0.1;1');
+    animate.setAttribute('dur', '1.5s');
+    animate.setAttribute('repeatCount', 'indefinite');
+    open_model_btn.querySelector('#center').appendChild(animate);
+};
 open_model_btn.onclick = function (e) {
-    if (is_open_model) {
+    if (open_model_btn.disabled) return;
+    if (open_model_btn.is_opened) {
         audioFlow.suspendASR();
-        is_open_model = false;
-        // e.target.textContent = "OpenModel";
-        open_model_btn.querySelector('animate').remove();
+        open_model_btn.close();
     } else {
         audioFlow.resumeASR();
-        is_open_model = true;
-        // e.target.textContent = "StopModel";
-        const animate = document.createElementNS("http://www.w3.org/2000/svg", 'animate');
-        animate.setAttribute('attributeName', 'opacity');
-        animate.setAttribute('values', '1;0.1;1');
-        animate.setAttribute('dur', '1.5s');
-        animate.setAttribute('repeatCount', 'indefinite');
-        open_model_btn.querySelector('#center').appendChild(animate);
-
         pinyin_text.textContent = "";
+        open_model_btn.open();
     };
 };
+open_model_btn.disable();
 // 页面元素事件设置完毕
 
-
-// 设置音频处理流程
-//基础配置
-const numberOfChannels = 1, bufferSize = 256, total_duration = 10;
-const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
-const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/';
-const minPinYinN = 10;
-const useWebWorker = false;
-/**
- * 
- * numberOfChannels 音频声道数。整数，默认为1。支持的值最多为32。
- * bufferSize 以采样帧为单位的缓冲区大小。
- *            必须是以下值之一:0、256、512、1024、2048、4096、8192、16384。为0时系统自动选择。
- *            这时你的刷新帧率就是sampleRate/bufferSize。
- * total_duration 以下各种音频绘制的时间总长度。
- * 
- * sampleRate 音频采样率 可取 8000、16000、32000、48000 之一
- * fft_s 一个短时傅里叶变换的窗长，单位为秒
- * hop_s 窗之间间隔长，单位为秒
- * 注意：以上三个参数应该与下面ModelDir文件夹下feature.json中的参数一致，否则模型将加载失败。
- * 
- * ModelDir TensorflowJS 模型文件夹，该文件夹下应该存在一个model.json,一个feature.json,若干个.bin文件。
- * minPinYinN 正整数，流式模型推断音频最小的长度；如果为4，则一次推断输出4个拼音片段，并保留中间两个；下一次推断与这次推断的覆盖长度为4/2 = 2.
- * useWebWorker 是否使用异步进行模型推断；若为false，则模型推断与音频刷新同步进行，大概率导致音频卡顿，但是保证实时率。
- *              若为true，则推断异步进行，不会阻塞音频流逝，但推断输出一般会有积压延迟。
- */
-//配置完毕
-
-const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
-audioFlow.open();
-audioFlow.openStft(fft_s, hop_s);
-audioFlow.openWaveDraw('waveDrawer', total_duration, false,true);
-audioFlow.openStftDraw('stftDrawer', total_duration, false);
-audioFlow.openASR(ModelDir, total_duration, minPinYinN, useWebWorker).then((recivePredictResultEvent) => {
-    audioFlow.suspendASR();
-    open_model_btn.querySelector('#center').setAttribute('fill', 'red');
-    open_model_btn.disabled = false;
-
-    recivePredictResultEvent.addListener((predictResult) => {
-        const origin_pinyinArray = predictResult.pinyinArray;
-        showOriginPinYinArray(origin_pinyinArray);
-    }, 'showOriginPinYinArray');
-
-    audioFlow.openASRDraw('pinyinDrawer', total_duration);
-    audioFlow.keepASR(total_duration).onUpdate = (cyclicPinYinArray) => {
-        dealPinYinArray(cyclicPinYinArray.toArray());
-    };
-
-    audioFlow.openVoiceWakeUp();
-});
 
 
 
