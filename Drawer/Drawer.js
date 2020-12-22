@@ -2,6 +2,12 @@ import { CyclicImageData } from '../utils/CyclicContainer.js';
 import { createElement } from '../utils/other_utils.js';
 
 class Drawer {
+    /**
+     * 
+     * @param {str} id canvas html元素id，如果该html元素已存在则直接使用该canvas，如果不存在则自动创建新的canvas元素。
+     * @param {*} width 
+     * @param {*} height 
+     */
     constructor(id = 'DrawerCanvas', width = 600, height = 400) {
 
         this.canvas = document.querySelector(`canvas#${id}`);
@@ -34,8 +40,8 @@ class Drawer {
 
     _process_draw_hunger = async () => {
         /**
-         * 哭了，设计的事件触发绘制模式反而导致帧数抖动。。。
-         * 毕竟不是底层设计
+         * 哭了，这种事件触发绘制模式反而导致帧数抖动。。。
+         * 毕竟不是底层设计，还是要学习一个
          */
         await this.draw(this.data);
         window.requestAnimationFrame(this.requestAF);
@@ -43,7 +49,7 @@ class Drawer {
 
     _process_draw_smoothly = () => {
         /**
-         * 傻瓜式设计效果更平滑
+         * 傻瓜式无限自我调用效果更平滑
          */
         this.draw(this.data);
         window.requestAnimationFrame(this._process_draw_smoothly);

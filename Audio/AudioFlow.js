@@ -68,6 +68,29 @@ class MyEvent {
 };
 
 class AudioFlow extends AudioFlowProcesser {
+    /**
+     * 
+     * @param {AudioNode|AudioBuffer|Blob|MediaElement|MediaStream|null} audioSource 音频源对象，具体可为五种类型里的一种,详见 AudioFlowProcesser 的注释。
+     *                              默认为null, 暂不指定音频源。可以在实例化后调用this.addAudioSource动态指定,详见 AudioFlowProcesser 的注释。
+     * 
+     * @param {float|undefined} sampleRate - - 用于AudioContext的sampleRate(采样量)，以每秒采样数来指定。
+     *                              该值必须是一个浮点值，指示用于配置新上下文的采样率(以每秒采样为单位);
+     *                              此外，该值必须为AudioBuffer.sampleRate所支持的值。
+     *                              如果未指定，则默认使用上下文输出设备的首选样本率。
+     * @param {int} numberOfChannels - - 整数，指定此节点输入的通道数，默认为1。支持的值最多为32。
+     * @param {int|undefined} ScriptNode_bufferSize - - 以采样帧为单位的缓冲区大小。默认256。
+     *                              如果指定，bufferSize必须是以下值之一:256、512、1024、2048、4096、8192、16384。
+     *                              如果没有传入，或者该值为0，则实现将为给定环境选择最佳缓冲区大小，在节点的整个生命周期中，该缓冲区大小为2的常量幂。 
+     *                              这个值控制了audioprocess事件被分派的频率，以及每次调用需要处理多少个样本帧。
+     *                              较低的缓冲大小值将导致较低(更好)的延迟。较高的值将是必要的，以避免音频分裂和故障。
+     *                              建议作者不指定这个缓冲区大小，而允许实现选择一个好的缓冲区大小来平衡延迟和音频质量。
+     * @param {'sound'|'stream'|'asAudioNode'|AudioNode|null} audioDestination - - 音频目的地，把音频输出到哪里。
+     *                            - 1.'sound' 输出到扬声器。
+     *                            - 2.'stream' 输出到一个stream，调取 this.audioDestination 获取该stream做进一步处理。
+     *                            - 3.'asAudioNode' 生成一个 AudioNode,可以继续连接其他AudioNode。调用 this.audioDestination 获取该 AudioNode。
+     *                            - 4.AudioNode 传入一个AudioNode，并连接到它上面。
+     *                            - 5.null 不做任何输出。
+     */
     constructor(
         audioSource = null,
         sampleRate = 8000,
@@ -84,7 +107,7 @@ class AudioFlow extends AudioFlowProcesser {
             numberOfChannels,
             /**
              * 
-             * @param {AudioData} audioData 
+             * @param {AudioData} audioData 类型为AudioData的实例，详见AudioData类的定义。
              */
             (audioData) => {
                 this.lastAudioData = audioData;
@@ -97,10 +120,18 @@ class AudioFlow extends AudioFlowProcesser {
 
     };
 
+    /**
+     * 开始收取音频
+     */
     openAudio = () => {
+        super.open();
         return this.reciveAudioDataEvent;
     };
 
+    /**
+     * 保留收取到的最近一段时间的音频
+     * @param {Number} keeping_duration 保留的时间长度，单位为秒，默认10秒。
+     */
     keepAudio = (keeping_duration = 10) => {
         if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行openAudio。然而传入了${keeping_duration}`);
         this.audioDataCyclicContainer = new AudioDataCyclicContainer(this.sampleRate, this.numberOfChannels, keeping_duration);
@@ -115,6 +146,13 @@ class AudioFlow extends AudioFlowProcesser {
         return this.audioDataCyclicContainer;
     };
 
+    /**
+     * 开始绘制音频波形图
+     * @param {str} id canvas html元素id，如果该html元素已存在则直接使用该canvas，如果不存在则自动创建新的canvas元素。
+     * @param {Number} total_duration 绘制音频时长
+     * @param {boolean} show_time 是否显示时间戳
+     * @param {boolean} show_fps 是否显示fps
+     */
     openWaveDraw = (id = 'audioWave', total_duration = 10, show_time = false, show_fps = false) => {
         if (!this.reciveAudioDataEvent.hasListener('waveDrawer.updateAudioData')) {
             this.waveDrawer = new WaveDrawer(id, this.sampleRate, this.numberOfChannels, total_duration, show_time);
@@ -133,6 +171,11 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
+    /**
+     * 开始计算短时傅里叶音频频谱
+     * @param {Number} fft_s 一个短时傅里叶变换的窗长，单位为秒
+     * @param {Number} hop_s 短时傅里叶变换窗之间间隔长，单位为秒
+     */
     openStft = (fft_s = 0.032, hop_s = 0.008) => {
         if (!this.reciveStftDataEvent) {
             const logstftFeature = new LogStftFeature(this.sampleRate, fft_s, hop_s),
@@ -209,6 +252,10 @@ class AudioFlow extends AudioFlowProcesser {
         return this.reciveStftDataEvent;
     };
 
+    /**
+     * 保留一段时间的音频频谱
+     * @param {Number} keeping_duration 
+     */
     keepStft = (keeping_duration = 10) => {
         if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行 keepStft 。然而传入了${keeping_duration}`);
         this.stftDataCyclicContainer = new StftDataCyclicContainer(this.sampleRate, this.fft_n, this.hop_n, keeping_duration);
@@ -223,6 +270,12 @@ class AudioFlow extends AudioFlowProcesser {
         return this.stftDataCyclicContainer;
     };
 
+    /**
+     * 开始绘制音频频谱图
+     * @param {str} id canvas html元素id，如果该html元素已存在则直接使用该canvas，如果不存在则自动创建新的canvas元素。
+     * @param {Number} total_duration 绘制频谱时长，单位为秒
+     * @param {boolean} show_time 是否显示时间戳
+     */
     openStftDraw = (id = 'stftWave', total_duration = 10, show_time = false) => {
         if (!this.reciveStftDataEvent) throw new Error("还未开启openStft,没有stft数据!");
         if (!this.reciveStftDataEvent.hasListener('stftDrawer.updateStftData')) {
@@ -233,6 +286,14 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
+    /**
+     * 开始语音识别
+     * @param {str} ModelDir TensorflowJS 模型文件夹，该文件夹下应该存在一个model.json,一个feature.json,若干个.bin文件。
+     * @param {Number} maxPredictTime 模型进行单次推断的音频最长时长,单位为秒
+     * @param {int} minPinYinN 正整数，流式模型推断音频最小的长度；如果为4，则一次推断输出4个拼音片段，并保留中间两个；下一次推断与这次推断的覆盖长度为4/2 = 2.
+     * @param {*} useWebWorker 是否使用异步进行模型推断；若为false，则模型推断与音频刷新同步进行，大概率导致音频卡顿，但是保证实时率。
+     *                         若为true，则推断异步进行，不会阻塞音频流逝，但推断输出一般会有积压延迟。
+     */
     openASR = async (ModelDir = './ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/', maxPredictTime = 10, minPinYinN = 4, useWebWorker = true) => {
         if (this.recivePredictResultEvent) {
             console.warn('AudioFlow已经开启过openStft了，不需重复开启');
@@ -241,20 +302,10 @@ class AudioFlow extends AudioFlowProcesser {
 
         const asrModel = useWebWorker ? new WorkerASRModel() : new ASRModel();
         await asrModel.init(ModelDir);
-        const is_same_featureConfig = (featureConfig) => {
-            for (let prop_name of ['name', 'sampleRate', 'fft_s', 'hop_s']) {
-                if (featureConfig[prop_name] !== this.logstftFeature[prop_name]) {
-                    console.warn(`featureConfig[${prop_name}](${featureConfig[prop_name]}) !== this.logstftFeature[${prop_name}](${this.logstftFeature[prop_name]})`)
-                    return false;
-                };
-            };
-            return true;
-        };
-        if (!is_same_featureConfig(asrModel.featureConfig)) throw Error("ASR开启失败，模型特征配置与本AudioFlow不一致");
 
         const maxPinYinN = Math.ceil(maxPredictTime / asrModel.featureConfig.hop_s / asrModel.viewK);
         // 待做：通过判断概率大小选择重叠部分拼音
-        const _x = Math.floor(2);
+        const _x = Math.floor(minPinYinN/2);
         const overlapPinYinN = _x + _x % 2;
 
         this.flowPredictConfig = {
@@ -306,6 +357,17 @@ class AudioFlow extends AudioFlowProcesser {
             // setTimeout(predictStftDataFlow,1000);
         };
         if (!this.reciveStftDataEvent) this.openStft(asrModel.featureConfig.fft_s, asrModel.featureConfig.hop_s);
+        const is_same_featureConfig = (featureConfig) => {
+            for (let prop_name of ['name', 'sampleRate', 'fft_s', 'hop_s']) {
+                if (featureConfig[prop_name] !== this.logstftFeature[prop_name]) {
+                    console.warn(`featureConfig[${prop_name}](${featureConfig[prop_name]}) !== this.logstftFeature[${prop_name}](${this.logstftFeature[prop_name]})`)
+                    return false;
+                };
+            };
+            return true;
+        };
+        if (!is_same_featureConfig(asrModel.featureConfig)) throw Error("ASR开启失败，模型特征配置与本AudioFlow不一致");
+
         this.reciveStftDataEvent.addListener(setFlowPredictStftData, 'ASRPredict');
         this.isASRSuspended = true;
         this.suspendASR = () => {
@@ -321,6 +383,10 @@ class AudioFlow extends AudioFlowProcesser {
         return recivePredictResultEvent;
     };
 
+    /**
+     * 保留一段时长的语音识别推断结果
+     * @param {Number} keeping_duration 保留多少音频时长的推断结果
+     */
     keepASR = (keeping_duration = 3) => {
         if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行 keepASR 。然而传入了${keeping_duration}`);
         const eachPinYinTime = this.asrModel.eachOutPutTime;
@@ -346,6 +412,11 @@ class AudioFlow extends AudioFlowProcesser {
         return cyclicPinYinArray;
     };
 
+    /**
+     * 绘制语音识别结果
+     * @param {str} id canvas html元素id，如果该html元素已存在则直接使用该canvas，如果不存在则自动创建新的canvas元素。
+     * @param {Number} total_duration 绘制识别结果时长，单位为秒
+     */
     openASRDraw = (id = 'pinyinDrawer', total_duration = 10) => {
         if (!this.recivePredictResultEvent) throw new Error("还未开启openASR,没有predictResult数据!");
         if (!this.recivePredictResultEvent.hasListener("pinyinDrawer.updatePinYinData")) {
@@ -364,6 +435,9 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
+    /**
+     * （开发中）开启语音唤醒功能
+     */
     openVoiceWakeUp = () => {
         if (!this.cyclicPinYinArray) this.keepASR();
         this.voiceWakeUp = new VoiceWakeUp()

@@ -1,3 +1,4 @@
+// 将ASRModel封装成异步的形式，对外暴露API一致，这个封装需要结合".WorkerASRModel.js"一起实现。
 (async () => {
     const { MyWorkerScript } = await import("../../Workers/MyWorker.js");
     const { ASRModel } = await import("./ASRModel.js");

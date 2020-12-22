@@ -29,8 +29,14 @@ const useWebWorker = true;
 
 import { AudioFlow } from './Audio/AudioFlow.js';
 import { createElementNS } from './utils/other_utils.js';
-const audioFlow = new AudioFlow(null, sampleRate, numberOfChannels, bufferSize, 'sound');
-audioFlow.open();
+const audioFlow = new AudioFlow(
+    null, //暂不指定音频源。在实例化后调用 audioFlow.addAudioSource动态指定,见下面的html element配置
+    sampleRate, //音频采样率
+    numberOfChannels, //声道数
+    bufferSize, //缓冲区大小
+    'sound'// 音频目的地，改为null则不输出，见AudioFlow类的注释
+);
+audioFlow.openAudio();
 audioFlow.openStft(fft_s, hop_s);
 audioFlow.openWaveDraw('waveDrawer', total_duration, false,true);
 audioFlow.openStftDraw('stftDrawer', total_duration, false);

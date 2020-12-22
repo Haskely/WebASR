@@ -4,9 +4,9 @@ import { CyclicFloat32Array, CyclicFloat32Matrix, Float32Matrix } from '../utils
 class AudioData {
     /**
      * 
-     * @param {int32} sampleRate 
-     * @param {Array[Float32Array]} channels 
-     * @param {float32} audioEndTime 
+     * @param {int32} sampleRate 音频采样率
+     * @param {Array[Float32Array]} channels 音频数据数组，比如双声道 8000采样率 10 秒音频，则channels为[[8000*10个浮点数] ,[8000*10个浮点数]]
+     * @param {float32} audioEndTime 音频末尾时间戳
      */
     constructor(sampleRate, channels, audioEndTime) {
         this.sampleRate = sampleRate;
@@ -25,11 +25,11 @@ class AudioData {
 class StftData {
     /**
      * 
-     * @param {int32} sampleRate 
-     * @param {int32} fft_n 
-     * @param {int32} hop_n 
-     * @param {Float32Matrix} stft 
-     * @param {float32} audioEndTime 
+     * @param {int32} sampleRate 音频采样率
+     * @param {int32} fft_n 短时傅里叶变换窗大小，单位为采样帧
+     * @param {int32} hop_n 短时傅里叶变换窗之间间隔，单位为采样帧
+     * @param {Float32Matrix} stft 频谱数据，一个二维数组，行为时间分量，列为频率分量
+     * @param {float32} audioEndTime 音频末尾时间戳
      */
     constructor(sampleRate, fft_n, hop_n, stft, audioEndTime) {
         this.sampleRate = sampleRate;

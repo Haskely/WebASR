@@ -1,6 +1,6 @@
 import { ASRModel } from "./ASRModel.js";
 
-
+//这个类没有使用到，这部分逻辑还是嵌入到AudioFlow里面去了，ASRModel就只做ASRModel的事情好了
 class FlowASRModel extends ASRModel{
     constructor(){
         super();
@@ -106,4 +106,4 @@ class FlowASRModel extends ASRModel{
 
 };
 
-export {FlowASRModel};
+// export {FlowASRModel};
