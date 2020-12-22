@@ -52,7 +52,7 @@ audioFlow.openASR(ModelDir, total_duration, minPinYinN, useWebWorker).then((reci
 }).catch((reason) => {
     console.log(reason);
     console.error("模型加载失败！");
-    open_model_btn.disable();
+    open_model_btn.fail();
 });
 
 // 获取页面元素
@@ -175,14 +175,15 @@ switch_btn.onclick = function (e) {
 
 };
 
-
-open_model_btn.disable = () => {
-    open_model_btn.disabled = true;
+open_model_btn.loading = true;
+open_model_btn.fail = () => {
+    open_model_btn.loading = false;
+    open_model_btn.failed = true;
     open_model_btn.setAttribute("title","模型加载失败，请检查控制台输出");
     open_model_btn.querySelector('#center').setAttribute('fill', 'gray');
 };
 open_model_btn.active = () => {
-    open_model_btn.disabled = false;
+    open_model_btn.loading = false;
     open_model_btn.setAttribute("title","模型加载完成，点击启动");
     open_model_btn.querySelector('#center').setAttribute('fill', 'red');
 };
@@ -202,8 +203,11 @@ open_model_btn.open = () => {
     open_model_btn.querySelector('#center').appendChild(animate);
 };
 open_model_btn.onclick = function (e) {
-    if (open_model_btn.disabled) return;
-    if (open_model_btn.is_opened) {
+    if (open_model_btn.loading) {
+        console.log("模型还未加载完成...");
+    } else if(open_model_btn.failed){
+        console.log("模型加载失败了。");
+    } else if (open_model_btn.is_opened) {
         audioFlow.suspendASR();
         open_model_btn.close();
     } else {
@@ -212,7 +216,6 @@ open_model_btn.onclick = function (e) {
         open_model_btn.open();
     };
 };
-open_model_btn.disable();
 // 页面元素事件设置完毕
 
 
