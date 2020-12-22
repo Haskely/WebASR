@@ -2,17 +2,21 @@ import { TFJSGraphModelNetwork } from "./Network/Network.js";
 import {LogStftFeature} from './Feature/DataParser.js';
 import { PinYin } from './Label/pinyinbase.js';
 import './Network/tensorflowjs/tfjs@2.7.0.js';
+import { baseURI } from "../../utils/other_utils.js";
+
 class ASRModel {
     constructor(){
         // this.init();
     };
 
-    init = async (ModelDir = './Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/') => {
+    init = async (ModelDir = './ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/') => {
 
-        this.ModelDir = ModelDir;
+        ModelDir = new URL(ModelDir, baseURI).href;
         await this.initFeature(ModelDir);
         await this.initPinYin();
         await this.initNetwork(ModelDir);
+
+        this.ModelDir = ModelDir;
 
     };
 

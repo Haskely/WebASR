@@ -3,8 +3,8 @@
 //基础配置
 const numberOfChannels = 1, bufferSize = 256, total_duration = 10;
 const sampleRate = 8000, fft_s = 0.032, hop_s = 0.008;
-// const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/';
-const ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_magicdata/';
+// const ModelDir = './ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/';
+const ModelDir = './ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_magicdata/';
 const minPinYinN = 10;
 const useWebWorker = true;
 /**
@@ -239,4 +239,3 @@ function dealPinYinArray(pinyinArray) {
         last_py = py;
     };
 };
-

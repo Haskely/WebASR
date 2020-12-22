@@ -1,29 +1,30 @@
 import { StftData } from "../../Audio/AudioContainer.js";
 import { MyWorker } from "../../Workers/MyWorker.js";
 
-class WorkerASRModel extends MyWorker{
-    constructor(){
-        const WebWorkScriptURL = '../ASR/Model/WorkerASRModelScript.js';
+// 将ASRModel封装成异步的形式，对外暴露API一致，这个封装需要结合 ".WorkerASRModelScript.js" 一起实现。
+class WorkerASRModel extends MyWorker {
+    constructor() {
+        const WebWorkScriptURL = './ASR/Model/WorkerASRModelScript.js';
         super(WebWorkScriptURL)
-        this.reciveData('SetProperties',(properties) => {
-            for (let prop_name in properties){
+        this.reciveData('SetProperties', (properties) => {
+            for (let prop_name in properties) {
                 this[prop_name] = properties[prop_name];
             };
         });
     };
 
-    init = async (ModelDir = 'ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/')=>{
+    init = async (ModelDir = './ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/') => {
         await this.CreatePromise;
-        return await this.executeAsyncWorkerFunction('init',ModelDir);
+        return await this.executeAsyncWorkerFunction('init', ModelDir);
     };
 
     predictAudioData = (audioData) => {
-        return this.executeAsyncWorkerFunction('predictAudioData',audioData);
+        return this.executeAsyncWorkerFunction('predictAudioData', audioData);
     };
 
     predictStftData = (stftData) => {
-        const {dataContent,transferList} = this.getStftData2Transfer(stftData);
-        return this.executeAsyncWorkerFunction('predictStftData',dataContent);
+        const { dataContent, transferList } = this.getStftData2Transfer(stftData);
+        return this.executeAsyncWorkerFunction('predictStftData', dataContent);
     };
 
     /**
@@ -48,7 +49,7 @@ class WorkerASRModel extends MyWorker{
     };
 };
 
-export {WorkerASRModel};
+export { WorkerASRModel };
 
 
 

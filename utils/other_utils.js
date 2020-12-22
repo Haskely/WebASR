@@ -14,4 +14,7 @@ function createElementNS(tagName, attrs, namespaceURI) {
     return el;
 };
 
-export { createElement, createElementNS };
+const curURL = new Error().stack.match(/([^ \n])*([a-z]*:\/\/\/?)*?[a-z0-9\/\\]*\.js/ig)[0];
+const baseURI = new URL('../',curURL).href;
+
+export { createElement, createElementNS, baseURI };

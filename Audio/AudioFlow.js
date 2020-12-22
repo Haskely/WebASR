@@ -233,7 +233,7 @@ class AudioFlow extends AudioFlowProcesser {
         };
     };
 
-    openASR = async (ModelDir = '/ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/', maxPredictTime = 10, minPinYinN = 4, useWebWorker = true) => {
+    openASR = async (ModelDir = './ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/', maxPredictTime = 10, minPinYinN = 4, useWebWorker = true) => {
         if (this.recivePredictResultEvent) {
             console.warn('AudioFlow已经开启过openStft了，不需重复开启');
             return this.recivePredictResultEvent;
@@ -253,7 +253,8 @@ class AudioFlow extends AudioFlowProcesser {
         if (!is_same_featureConfig(asrModel.featureConfig)) throw Error("ASR开启失败，模型特征配置与本AudioFlow不一致");
 
         const maxPinYinN = Math.ceil(maxPredictTime / asrModel.featureConfig.hop_s / asrModel.viewK);
-        const _x = Math.floor(minPinYinN / 2);
+        // 待做：通过判断概率大小选择重叠部分拼音
+        const _x = Math.floor(2);
         const overlapPinYinN = _x + _x % 2;
 
         this.flowPredictConfig = {
