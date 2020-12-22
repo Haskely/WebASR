@@ -1,14 +1,14 @@
-import { AudioData, StftData, AudioDataCyclicContainer, StftDataCyclicContainer } from './AudioContainer.js';
-import { AudioFlowProcesser } from './AudioFlowProcesser.js';
-import { WaveDrawer } from './AudioDrawer.js';
-import { StftDrawer } from "../ASR/Model/Feature/StftDrawer.js";
-import { PinYinDrawer } from '../ASR/Model/Label/PinYinDrawer.js';
-import { LogStftFeature } from '../ASR/Model/Feature/DataParser.js';
-import { ASRModel } from '../ASR/Model/ASRModel.js';
-import { WorkerASRModel } from '../ASR/Model/WorkerASRModel.js';
-import { CyclicArray } from '../utils/CyclicContainer.js';
+import {AudioData,StftData,AudioDataCyclicContainer,StftDataCyclicContainer} from './AudioContainer.js';
+import {AudioFlowProcesser} from './AudioFlowProcesser.js';
+import {WaveDrawer} from './AudioDrawer.js';
+import {StftDrawer} from "../ASR/Model/Feature/StftDrawer.js";
+import {PinYinDrawer} from '../ASR/Model/Label/PinYinDrawer.js';
+import {LogStftFeature} from '../ASR/Model/Feature/DataParser.js';
+import {ASRModel} from '../ASR/Model/ASRModel.js';
+import {WorkerASRModel} from '../ASR/Model/WorkerASRModel.js';
+import {CyclicArray} from '../utils/CyclicContainer.js';
 import Stats from '../utils/stats/stats.module.js';
-import { combine_channels } from "../ASR/Model/Feature/tools.js";
+import {combine_channels} from "../ASR/Model/Feature/tools.js";
 class MyEvent {
     constructor() {
         this.Listeners = {};
@@ -105,7 +105,9 @@ class AudioFlow extends AudioFlowProcesser {
         if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行openAudio。然而传入了${keeping_duration}`);
         this.audioDataCyclicContainer = new AudioDataCyclicContainer(this.sampleRate, this.numberOfChannels, keeping_duration);
         if (this.reciveAudioDataEvent.hasListener('keepAudio')) this.reciveAudioDataEvent.removeListener('keepAudio');
-        this.reciveAudioDataEvent.addListener((audioData) => { this.audioDataCyclicContainer.updatedata(audioData); }, 'keepAudio');
+        this.reciveAudioDataEvent.addListener((audioData) => {
+            this.audioDataCyclicContainer.updatedata(audioData);
+        }, 'keepAudio');
         this.getAudioData = (startSample = undefined, endSample = undefined) => {
             return this.audioDataCyclicContainer.getdata(startSample, endSample);
         };
@@ -119,7 +121,9 @@ class AudioFlow extends AudioFlowProcesser {
             if (show_fps) {
                 const stats = new Stats();
                 document.body.appendChild(stats.dom);
-                this.reciveAudioDataEvent.addListener(() => { stats.update(); }, "waveDrawerStats");
+                this.reciveAudioDataEvent.addListener(() => {
+                    stats.update();
+                }, "waveDrawerStats");
             };
 
             this.reciveAudioDataEvent.addListener(
@@ -144,14 +148,15 @@ class AudioFlow extends AudioFlowProcesser {
                     currentAudioData.numberOfChannels = 1;
 
                     const totalAudioSampleLength = currentAudioData.sampleLength + leftedAudioDataCyclicContainer.sampleLength;
-                    const alignedAudioSampleLength = (totalAudioSampleLength) - (totalAudioSampleLength -overlap_n) % hop_n;
+                    const alignedAudioSampleLength = (totalAudioSampleLength) - (totalAudioSampleLength - overlap_n) % hop_n;
 
                     if (alignedAudioSampleLength >= fft_n) {
                         const preleftedAudioData = leftedAudioDataCyclicContainer.popdata();
                         const leftedAudioData = new AudioData(currentAudioData.sampleRate, [new Float32Array(totalAudioSampleLength - alignedAudioSampleLength + overlap_n)], currentAudioData.audioEndTime);
                         const alignedAudioData = new AudioData(currentAudioData.sampleRate, [new Float32Array(alignedAudioSampleLength)], currentAudioData.audioEndTime - leftedAudioData.timeLength);
 
-                        let k = 0, _k = 0;
+                        let k = 0,
+                            _k = 0;
                         while (k < preleftedAudioData.sampleLength) {
                             alignedAudioData.channels[0][k] = preleftedAudioData.channels[0][_k];
                             k += 1;
@@ -208,7 +213,9 @@ class AudioFlow extends AudioFlowProcesser {
         if (keeping_duration <= 0) throw Error(`keeping_duration必须是一个大于0的数，否则等效于不运行 keepStft 。然而传入了${keeping_duration}`);
         this.stftDataCyclicContainer = new StftDataCyclicContainer(this.sampleRate, this.fft_n, this.hop_n, keeping_duration);
         if (this.reciveAudioDataEvent.hasListener('keepStft')) this.reciveAudioDataEvent.removeListener('keepStft');
-        this.reciveStftDataEvent.addListener((stftData) => { this.stftDataCyclicContainer.updatedata(stftData); }, 'keepStft');
+        this.reciveStftDataEvent.addListener((stftData) => {
+            this.stftDataCyclicContainer.updatedata(stftData);
+        }, 'keepStft');
         this.getStftData = () => {
             return this.stftDataCyclicContainer.getdata();
         };
@@ -220,7 +227,9 @@ class AudioFlow extends AudioFlowProcesser {
         if (!this.reciveStftDataEvent) throw new Error("还未开启openStft,没有stft数据!");
         if (!this.reciveStftDataEvent.hasListener('stftDrawer.updateStftData')) {
             this.stftDrawer = new StftDrawer(id, this.fft_n, this.hop_n, this.sampleRate, total_duration, show_time);
-            this.reciveStftDataEvent.addListener((stftData) => { this.stftDrawer.updateStftData(stftData); }, 'stftDrawer.updateStftData');
+            this.reciveStftDataEvent.addListener((stftData) => {
+                this.stftDrawer.updateStftData(stftData);
+            }, 'stftDrawer.updateStftData');
         };
     };
 
@@ -247,7 +256,11 @@ class AudioFlow extends AudioFlowProcesser {
         const _x = Math.floor(minPinYinN / 2);
         const overlapPinYinN = _x + _x % 2;
 
-        this.flowPredictConfig = { maxPinYinN, minPinYinN, overlapPinYinN };
+        this.flowPredictConfig = {
+            maxPinYinN,
+            minPinYinN,
+            overlapPinYinN
+        };
         const getFlowPredictConfig = (maxPinYinN, minPinYinN, overlapPinYinN, viewK) => {
 
             const maxStftTimeN = maxPinYinN * viewK;
@@ -259,9 +272,17 @@ class AudioFlow extends AudioFlowProcesser {
             );
             const eachStftTimeN = minPinYinN * viewK;
             const overlapStftTimeN = overlapPinYinN * viewK;
-            return { stftDataFlowCyclicContainer, eachStftTimeN, overlapStftTimeN }
+            return {
+                stftDataFlowCyclicContainer,
+                eachStftTimeN,
+                overlapStftTimeN
+            }
         };
-        const { stftDataFlowCyclicContainer, eachStftTimeN, overlapStftTimeN } = getFlowPredictConfig(maxPinYinN, minPinYinN, overlapPinYinN, asrModel.viewK)
+        const {
+            stftDataFlowCyclicContainer,
+            eachStftTimeN,
+            overlapStftTimeN
+        } = getFlowPredictConfig(maxPinYinN, minPinYinN, overlapPinYinN, asrModel.viewK)
 
         const setFlowPredictStftData = (stftData) => {
             stftDataFlowCyclicContainer.updatedata(stftData);
@@ -270,12 +291,15 @@ class AudioFlow extends AudioFlowProcesser {
         const recivePredictResultEvent = new MyEvent();
         const predictStftDataFlow = async () => {
             if (this.isASRSuspended) return;
+            if (asrModel.is_busy) return;
             const cur_stft_timeN = stftDataFlowCyclicContainer.timeN;
             if (cur_stft_timeN >= eachStftTimeN) {
+                asrModel.is_busy = true;
                 const full_stftData = stftDataFlowCyclicContainer.getdata();
                 stftDataFlowCyclicContainer.cleardata(cur_stft_timeN - overlapStftTimeN);
                 const predictResult = await asrModel.predictStftData(full_stftData)
                 recivePredictResultEvent.trigger(predictResult);
+                asrModel.is_busy = false;
             };
             // setTimeout(predictStftDataFlow,1000);
         };
@@ -303,7 +327,10 @@ class AudioFlow extends AudioFlowProcesser {
         if (this.recivePredictResultEvent.hasListener('keepASR')) this.recivePredictResultEvent.removeListener('keepASR');
         const overlapPinYinN = this.flowPredictConfig.overlapPinYinN;
         this.recivePredictResultEvent.addListener((predictResult) => {
-            const {keeped_pinyinArray,keeped_endTime} = getKeepedPinYinArray(predictResult,overlapPinYinN);
+            const {
+                keeped_pinyinArray,
+                keeped_endTime
+            } = getKeepedPinYinArray(predictResult, overlapPinYinN);
             cyclicPinYinArray.update(keeped_pinyinArray);
             this.pinyinEndTime = keeped_endTime;
         }, 'keepASR');
@@ -323,20 +350,23 @@ class AudioFlow extends AudioFlowProcesser {
             this.pinyinDrawer = new PinYinDrawer(id, total_duration, this.asrModel.eachOutPutTime);
             const overlapPinYinN = this.flowPredictConfig.overlapPinYinN;
             this.recivePredictResultEvent.addListener((predictResult) => {
-                const {keeped_pinyinArray,keeped_endTime} = getKeepedPinYinArray(predictResult,overlapPinYinN);
+                const {
+                    keeped_pinyinArray,
+                    keeped_endTime
+                } = getKeepedPinYinArray(predictResult, overlapPinYinN);
                 this.pinyinDrawer.updatePinYinData(keeped_pinyinArray, keeped_endTime, this.lastAudioData.audioEndTime);
             }, "pinyinDrawer.updatePinYinData");
-            this.reciveAudioDataEvent.addListener((audioData)=>{
+            this.reciveAudioDataEvent.addListener((audioData) => {
                 this.pinyinDrawer.updateAudioEndTime(this.lastAudioData.audioEndTime);
             });
         };
     };
 
     openVoiceWakeUp = () => {
-        if(!this.cyclicPinYinArray) this.keepASR();
+        if (!this.cyclicPinYinArray) this.keepASR();
         this.voiceWakeUp = new VoiceWakeUp()
-        this.voiceWakeUp.addWakeUpPinYinArray(["ni","hao"]);
-        this.recivePredictResultEvent.addListener(()=>{
+        this.voiceWakeUp.addWakeUpPinYinArray(["ni", "hao"]);
+        this.recivePredictResultEvent.addListener(() => {
             this.voiceWakeUp.recivePinYinArray(this.getASR().pinyinArray);
         });
 
@@ -346,20 +376,25 @@ class AudioFlow extends AudioFlowProcesser {
 
 };
 
-function getKeepedPinYinArray(predictResult,overlapPinYinN){
-    const sliceN = overlapPinYinN/2;
+function getKeepedPinYinArray(predictResult, overlapPinYinN) {
+    const sliceN = overlapPinYinN / 2;
 
-    const keeped_pinyinArray = predictResult.pinyinArray.slice(sliceN,-sliceN);
+    const keeped_pinyinArray = predictResult.pinyinArray.slice(sliceN, -sliceN);
     const eachPinYinTime_s = predictResult.timeLength / predictResult.pinyinArray.length;
-    const keeped_startTime = predictResult.audioStartTime + eachPinYinTime_s*sliceN;
-    const keeped_endTime = predictResult.audioEndTime - eachPinYinTime_s*sliceN;
-    return {keeped_pinyinArray,keeped_endTime}
+    const keeped_startTime = predictResult.audioStartTime + eachPinYinTime_s * sliceN;
+    const keeped_endTime = predictResult.audioEndTime - eachPinYinTime_s * sliceN;
+    return {
+        keeped_pinyinArray,
+        keeped_endTime
+    }
 }
 
-export { AudioFlow };
+export {
+    AudioFlow
+};
 
-class VoiceWakeUp{
-    constructor(){
+class VoiceWakeUp {
+    constructor() {
         this.wakeUpPinYinArrays = {};
         this.wakeUpCallbacks = {};
         this.awake_threshold = 0.1;
@@ -373,19 +408,19 @@ class VoiceWakeUp{
         this.wakeUpPinYinArrays[pinyinArray] = pinyinArray;
     };
 
-    checkAwake = (recived_pinyinArray,wakeup_pinyinArray) => {
+    checkAwake = (recived_pinyinArray, wakeup_pinyinArray) => {
         const pyLen = wakeup_pinyinArray.length;
         const needed_pyList = recived_pinyinArray.slice(-pyLen);
         let dis = 0;
         for (let i = 0; i < pyLen; i += 1) {
             dis += cal_pinyin_distance(needed_pyList[i], wakeup_pinyinArray[i])
         };
-        return (dis < this.awake_threshold) 
+        return (dis < this.awake_threshold)
     };
 
-    recivePinYinArray = (recived_pinyinArray) =>{
-        for(let pyArrID in this.wakeUpPinYinArrays){
-            if (this.checkAwake(recived_pinyinArray,this.wakeUpPinYinArrays[pyArrID])) this.triggerWakeUp(this.wakeUpPinYinArrays[pyArrID]);
+    recivePinYinArray = (recived_pinyinArray) => {
+        for (let pyArrID in this.wakeUpPinYinArrays) {
+            if (this.checkAwake(recived_pinyinArray, this.wakeUpPinYinArrays[pyArrID])) this.triggerWakeUp(this.wakeUpPinYinArrays[pyArrID]);
         };
     };
 
