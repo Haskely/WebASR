@@ -291,16 +291,17 @@ class AudioFlow extends AudioFlowProcesser {
         const recivePredictResultEvent = new MyEvent();
         const predictStftDataFlow = async () => {
             if (this.isASRSuspended) return;
-            if (asrModel.is_busy) return;
+            // if (asrModel.is_busy) return;
             const cur_stft_timeN = stftDataFlowCyclicContainer.timeN;
-            if (cur_stft_timeN >= eachStftTimeN) {
-                asrModel.is_busy = true;
-                const full_stftData = stftDataFlowCyclicContainer.getdata();
-                stftDataFlowCyclicContainer.cleardata(cur_stft_timeN - overlapStftTimeN);
-                const predictResult = await asrModel.predictStftData(full_stftData)
-                recivePredictResultEvent.trigger(predictResult);
-                asrModel.is_busy = false;
-            };
+            if (cur_stft_timeN < eachStftTimeN) return;
+
+            asrModel.is_busy = true;
+            const full_stftData = stftDataFlowCyclicContainer.getdata();
+            stftDataFlowCyclicContainer.cleardata(cur_stft_timeN - overlapStftTimeN);
+            const predictResult = await asrModel.predictStftData(full_stftData)
+            recivePredictResultEvent.trigger(predictResult);
+            asrModel.is_busy = false;
+
             // setTimeout(predictStftDataFlow,1000);
         };
         if (!this.reciveStftDataEvent) this.openStft(asrModel.featureConfig.fft_s, asrModel.featureConfig.hop_s);
