@@ -4,9 +4,9 @@ import { combine_channels } from "./tools.js";
 
 
 
-class LogStftFeature{
+class LogStftFeature {
 
-    constructor(sampleRate,fft_s,hop_s){
+    constructor(sampleRate, fft_s, hop_s) {
         this.name = 'logstft';
         this.sampleRate = sampleRate;
         this.fft_s = fft_s;
@@ -16,8 +16,8 @@ class LogStftFeature{
     };
 
     logstft_audioData = (audioData) => {
-        return logstft(combine_channels(audioData.channels),this.fft_n,this.hop_n);
+        return logstft(combine_channels(audioData.channels), this.fft_n, this.hop_n);
     };
 };
 
-export {LogStftFeature};
+export { LogStftFeature };

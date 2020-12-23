@@ -133,7 +133,7 @@ class StftDataCyclicContainer {
         };
     };
 
-    get timeN(){
+    get timeN() {
         return this.stftCyclicMatrix.curRowsN;
     };
 

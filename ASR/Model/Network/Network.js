@@ -1,15 +1,15 @@
 import './tensorflowjs/tfjs@2.7.0.js';
-class Network{
+class Network {
 
-    constructor(){
+    constructor() {
 
     };
 
-    predict = (data) => {};
+    predict = (data) => { };
 };
 
-class TFJSGraphModelNetwork{
+class TFJSGraphModelNetwork {
     static loadGraphModel = tf.loadGraphModel;
 };
 
-export {TFJSGraphModelNetwork};
+export { TFJSGraphModelNetwork };

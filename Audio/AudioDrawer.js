@@ -33,8 +33,8 @@ export function num2color(num) {
  * @param {Number} min_val 
  * @param {Number} max_val 
  */
-function convert_to_rgb(val, RGBcolors, min_val=0, max_val=1) {
-    val = (val - min_val)/(max_val - min_val);
+function convert_to_rgb(val, RGBcolors, min_val = 0, max_val = 1) {
+    val = (val - min_val) / (max_val - min_val);
     const i_f = val * (RGBcolors.length - 1);
 
     const i = Math.floor(i_f / 1), f = i_f % 1;  // Split into whole & fractional parts.
@@ -69,7 +69,7 @@ class WaveDrawer extends Drawer {
     ) {
         const sample_n_per_pixel = 64 * sampleRate / 8000;
         const width = Math.floor(total_duration * sampleRate / sample_n_per_pixel);
-        const height = Math.round(width/10);
+        const height = Math.round(width / 10);
         super(id, width, height);
         this.sampleRate = sampleRate;
         this.numberOfChannels = numberOfChannels;
@@ -217,7 +217,7 @@ class WaveDrawerFlexible extends Drawer {
         total_duration = 10,
         show_time = true,
     ) {
-        if(!width) width = Math.floor(total_duration * sampleRate / 64);
+        if (!width) width = Math.floor(total_duration * sampleRate / 64);
         super(id, width, height);
         this.sampleRate = sampleRate;
         this.numberOfChannels = numberOfChannels;

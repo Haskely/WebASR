@@ -12,12 +12,12 @@ class Drawer {
 
         this.canvas = document.querySelector(`canvas#${id}`);
         if (!this.canvas) {
-            const div = createElement('div',{style:'text-align:center;'});
-            const canvas = createElement('canvas',{
-                id:id,
-                width:Math.round(width),
-                height:Math.round(height),
-                style:"margin:1 auto;width: 90vw;text-align:center;border: 1px solid black;border-radius: 4px;"
+            const div = createElement('div', { style: 'text-align:center;' });
+            const canvas = createElement('canvas', {
+                id: id,
+                width: Math.round(width),
+                height: Math.round(height),
+                style: "margin:1 auto;width: 90vw;text-align:center;border: 1px solid black;border-radius: 4px;"
             });
             div.appendChild(canvas);
             document.body.append(div);

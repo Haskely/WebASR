@@ -14,7 +14,7 @@ class PinYinDrawer extends Drawer {
         const max_pinyin_num = Math.ceil(total_duration / each_pinyin_time_len);
         const char_len = 2;
         const cwN = 3;
-        super(id, max_pinyin_num * char_len*7, char_len*7*cwN);
+        super(id, max_pinyin_num * char_len * 7, char_len * 7 * cwN);
         this.cwN = cwN;
         this.total_duration = total_duration;
         this.each_pinyin_time_len = each_pinyin_time_len;
@@ -35,7 +35,7 @@ class PinYinDrawer extends Drawer {
         this.audioEndTime = audioEndTime;
         this.setData({
             cyclicPinYinArray: this.cyclicPinYinArray,
-            pinyinEndTime:this.pinyinEndTime,
+            pinyinEndTime: this.pinyinEndTime,
             audioEndTime,
         });
     };
@@ -52,8 +52,8 @@ class PinYinDrawer extends Drawer {
     };
 
     draw = async (
-        { cyclicPinYinArray,pinyinEndTime,audioEndTime }
-        ) => {
+        { cyclicPinYinArray, pinyinEndTime, audioEndTime }
+    ) => {
         // const cyclicPinYinArray = this.cyclicPinYinArray, pinyinEndTime = this.pinyinEndTime, audioEndTime = this.audioEndTime;
         this.canvas_ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         const pinyin_time_dx = Math.round(this.each_pinyin_time_len * this.canvas.width / this.total_duration);
@@ -62,18 +62,18 @@ class PinYinDrawer extends Drawer {
         this.canvas_ctx.beginPath();
 
         const shifted_end_x = this.canvas.width - left_shift_x;
-        const cwdy = this.canvas.height/this.cwN;
-        const textMaxLen = pinyin_time_dx*this.cwN;
+        const cwdy = this.canvas.height / this.cwN;
+        const textMaxLen = pinyin_time_dx * this.cwN;
 
 
-        for (let i = 1; i<= pinyinArray.length && pinyin_time_dx * i <= shifted_end_x; i += 1) {
+        for (let i = 1; i <= pinyinArray.length && pinyin_time_dx * i <= shifted_end_x; i += 1) {
             const cur_x = shifted_end_x - pinyin_time_dx * i;
-            const cur_y = ((this.cwN + (cyclicPinYinArray.endPoint - i)%this.cwN)%this.cwN + 1)*cwdy;
+            const cur_y = ((this.cwN + (cyclicPinYinArray.endPoint - i) % this.cwN) % this.cwN + 1) * cwdy;
             this.canvas_ctx.moveTo(cur_x, 0);
-            this.canvas_ctx.lineTo(cur_x, cwdy/10);
-            this.canvas_ctx.moveTo(cur_x, cur_y -cwdy);
+            this.canvas_ctx.lineTo(cur_x, cwdy / 10);
+            this.canvas_ctx.moveTo(cur_x, cur_y - cwdy);
             this.canvas_ctx.lineTo(cur_x, cur_y);
-            this.canvas_ctx.fillText(pinyinArray[pinyinArray.length - i], cur_x + 2, cur_y,textMaxLen-2);
+            this.canvas_ctx.fillText(pinyinArray[pinyinArray.length - i], cur_x + 2, cur_y, textMaxLen - 2);
         };
         this.canvas_ctx.stroke();
         this.canvas_ctx.closePath();
@@ -81,4 +81,4 @@ class PinYinDrawer extends Drawer {
 
 };
 
-export {PinYinDrawer};
+export { PinYinDrawer };

@@ -118,7 +118,7 @@ function iterate_buffer(buffer) {
 
 
 class A {
-    constructor(){
+    constructor() {
         this.m = await fetch('./ASR/Model/Network/tensorflowjs/tfjsModel/tfjs_mobilev3small_thchs30/feature.json')
     };
     func1 = () => {

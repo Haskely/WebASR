@@ -1,14 +1,14 @@
-import {AudioData,StftData,AudioDataCyclicContainer,StftDataCyclicContainer} from './AudioContainer.js';
-import {AudioFlowProcesser} from './AudioFlowProcesser.js';
-import {WaveDrawer} from './AudioDrawer.js';
-import {StftDrawer} from "../ASR/Model/Feature/StftDrawer.js";
-import {PinYinDrawer} from '../ASR/Model/Label/PinYinDrawer.js';
-import {LogStftFeature} from '../ASR/Model/Feature/DataParser.js';
-import {ASRModel} from '../ASR/Model/ASRModel.js';
-import {WorkerASRModel} from '../ASR/Model/WorkerASRModel.js';
-import {CyclicArray} from '../utils/CyclicContainer.js';
+import { AudioData, StftData, AudioDataCyclicContainer, StftDataCyclicContainer } from './AudioContainer.js';
+import { AudioFlowProcesser } from './AudioFlowProcesser.js';
+import { WaveDrawer } from './AudioDrawer.js';
+import { StftDrawer } from "../ASR/Model/Feature/StftDrawer.js";
+import { PinYinDrawer } from '../ASR/Model/Label/PinYinDrawer.js';
+import { LogStftFeature } from '../ASR/Model/Feature/DataParser.js';
+import { ASRModel } from '../ASR/Model/ASRModel.js';
+import { WorkerASRModel } from '../ASR/Model/WorkerASRModel.js';
+import { CyclicArray } from '../utils/CyclicContainer.js';
 import Stats from '../utils/stats/stats.module.js';
-import {combine_channels} from "../ASR/Model/Feature/tools.js";
+import { combine_channels } from "../ASR/Model/Feature/tools.js";
 class MyEvent {
     constructor() {
         this.Listeners = {};
@@ -305,7 +305,7 @@ class AudioFlow extends AudioFlowProcesser {
 
         const maxPinYinN = Math.ceil(maxPredictTime / asrModel.featureConfig.hop_s / asrModel.viewK);
         // 待做：通过判断概率大小选择重叠部分拼音
-        const _x = Math.floor(minPinYinN/2);
+        const _x = Math.floor(minPinYinN / 2);
         const overlapPinYinN = _x + _x % 2;
 
         this.flowPredictConfig = {

@@ -1,7 +1,7 @@
 
 
-class AsyncExcuteID{
-    constructor(){
+class AsyncExcuteID {
+    constructor() {
         this.IDs = new Uint32Array(1);
     };
 
@@ -39,23 +39,23 @@ class MyWorker {
             console.log(data);
         });
         this.reciveAsyncWorkerFunctions = {};
-        this.reciveData('ExecuteFunctionReturn',({theReturn,excuteID}) =>  {
+        this.reciveData('ExecuteFunctionReturn', ({ theReturn, excuteID }) => {
             this.reciveAsyncWorkerFunctions[excuteID](theReturn);
         });
 
         this.asyncExcuteID = new AsyncExcuteID();
 
-        this.reciveData('Created',()=>{
+        this.reciveData('Created', () => {
             this.createdResolve();
         });
     };
 
 
 
-    executeAsyncWorkerFunction = (functionID,...args) => {
+    executeAsyncWorkerFunction = (functionID, ...args) => {
         const excuteID = this.asyncExcuteID.get();
-        this.sendData('ExecuteFunction',{
-            functionID,args,excuteID
+        this.sendData('ExecuteFunction', {
+            functionID, args, excuteID
         });
 
         return new Promise(resolve => {
@@ -64,7 +64,7 @@ class MyWorker {
     };
 
     getAsyncWorkerFunction = (functionID) => {
-        return (...args) => this.executeAsyncWorkerFunction(functionID,...args);
+        return (...args) => this.executeAsyncWorkerFunction(functionID, ...args);
     };
 
     sendData = (dataType, dataContent, transferList = []) => {
@@ -113,16 +113,16 @@ class MyWorkerScript {
         this.worker_self.console.warn = (msg) => this.sendData('Warn', msg);
         this.worker_self.console.error = (msg) => this.sendData('Error', msg);
         this.asyncFunctions = {};
-        this.reciveData('ExecuteFunction',async ({functionID,args,excuteID}) => {
+        this.reciveData('ExecuteFunction', async ({ functionID, args, excuteID }) => {
             const theReturn = await this.asyncFunctions[functionID](...args);
-            this.sendData('ExecuteFunctionReturn',{
-                theReturn,excuteID
+            this.sendData('ExecuteFunctionReturn', {
+                theReturn, excuteID
             });
         });
-        this.sendData('Created',null);
+        this.sendData('Created', null);
     };
 
-    registerFunctionID = (functionID,fn) => {
+    registerFunctionID = (functionID, fn) => {
         if (functionID in this.asyncFunctions) console.warn(`警告！functionID:"${functionID}"已经存在`)
         this.asyncFunctions[functionID] = fn;
     };

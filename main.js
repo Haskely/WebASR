@@ -38,7 +38,7 @@ const audioFlow = new AudioFlow(
 );
 audioFlow.openAudio();
 audioFlow.openStft(fft_s, hop_s);
-audioFlow.openWaveDraw('waveDrawer', total_duration, false,true);
+audioFlow.openWaveDraw('waveDrawer', total_duration, false, true);
 audioFlow.openStftDraw('stftDrawer', total_duration, false);
 audioFlow.openASR(ModelDir, total_duration, minPinYinN, useWebWorker).then((recivePredictResultEvent) => {
     audioFlow.suspendASR();
@@ -130,7 +130,7 @@ record_btn.onclick = async (e) => {
                     audio: true,
                 });
             audioFlow.addAudioSource(stream);
-            record_btn.setAttribute("title","正在录音，点击停止");
+            record_btn.setAttribute("title", "正在录音，点击停止");
             // e.target.textContent = 'StopRecord';
             const animate = document.createElementNS("http://www.w3.org/2000/svg", 'animate');
             animate.setAttribute('attributeName', 'opacity');
@@ -141,7 +141,7 @@ record_btn.onclick = async (e) => {
 
         } else {
             console.error('navigator.mediaDevices.getUserMedia not supported on your browser! 所以你的浏览器没法录音。');
-            record_btn.setAttribute("title","录音功能不可用，请检查控制台与浏览器兼容性");
+            record_btn.setAttribute("title", "录音功能不可用，请检查控制台与浏览器兼容性");
             record_btn.querySelector('#outer').setAttribute('fill', 'gray');
             e.target.disabled = true;
         };
@@ -160,7 +160,7 @@ record_btn.onclick = async (e) => {
 switch_btn.onclick = function (e) {
     if (audioFlow.isRunning()) {
         audioFlow.stop();
-        switch_btn.setAttribute("title","点击开始音频流");
+        switch_btn.setAttribute("title", "点击开始音频流");
         // e.target.textContent = "Start";
         switch_btn.querySelector('rect').remove();
         const path = document.createElementNS("http://www.w3.org/2000/svg", 'path');
@@ -170,7 +170,7 @@ switch_btn.onclick = function (e) {
         switch_btn.querySelector('svg').appendChild(path);
     } else {
         audioFlow.start();
-        switch_btn.setAttribute("title","点击暂停音频流");
+        switch_btn.setAttribute("title", "点击暂停音频流");
         // e.target.textContent = "Stop";
         switch_btn.querySelector('#cricle_triangle').remove();
         const rect = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
@@ -185,22 +185,22 @@ open_model_btn.loading = true;
 open_model_btn.fail = () => {
     open_model_btn.loading = false;
     open_model_btn.failed = true;
-    open_model_btn.setAttribute("title","模型加载失败，请检查控制台输出");
+    open_model_btn.setAttribute("title", "模型加载失败，请检查控制台输出");
     open_model_btn.querySelector('#center').setAttribute('fill', 'gray');
 };
 open_model_btn.active = () => {
     open_model_btn.loading = false;
-    open_model_btn.setAttribute("title","模型加载完成，点击启动");
+    open_model_btn.setAttribute("title", "模型加载完成，点击启动");
     open_model_btn.querySelector('#center').setAttribute('fill', 'red');
 };
 open_model_btn.close = () => {
     open_model_btn.is_opened = false;
-    open_model_btn.setAttribute("title","点击恢复模型");
+    open_model_btn.setAttribute("title", "点击恢复模型");
     open_model_btn.querySelector('animate').remove();
 };
 open_model_btn.open = () => {
     open_model_btn.is_opened = true;
-    open_model_btn.setAttribute("title","点击暂停模型");
+    open_model_btn.setAttribute("title", "点击暂停模型");
     const animate = document.createElementNS("http://www.w3.org/2000/svg", 'animate');
     animate.setAttribute('attributeName', 'opacity');
     animate.setAttribute('values', '1;0.1;1');
@@ -211,7 +211,7 @@ open_model_btn.open = () => {
 open_model_btn.onclick = function (e) {
     if (open_model_btn.loading) {
         console.log("模型还未加载完成...");
-    } else if(open_model_btn.failed){
+    } else if (open_model_btn.failed) {
         console.log("模型加载失败了。");
     } else if (open_model_btn.is_opened) {
         audioFlow.suspendASR();

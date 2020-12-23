@@ -88,7 +88,7 @@ function getCyclicTypedArrayClass(TypedArrayClass) {
          * 
          * @param {CyclicTypedArray} cyclicArray 
          */
-        onUpdate = (cyclicTypedArray) => {};
+        onUpdate = (cyclicTypedArray) => { };
 
         toArray(s = 0, e = this.length) {
             const size = this.size;
@@ -196,7 +196,7 @@ function getCyclicTypedArrayMatrixClass(TypedArrayClass) {
         };
 
         clear = (clearRowsN = this.curRowsN, fromEnd = false) => {
-            this._clear(clearRowsN * this.columnsN,fromEnd);
+            this._clear(clearRowsN * this.columnsN, fromEnd);
         };
 
         _clear = (clearLength = this.length, fromEnd = false) => {
@@ -766,4 +766,4 @@ const CyclicArray = getCyclicTypedArrayClass(Array);
 const Float32Matrix = getTypedArrayMatrixClass(Float32Array);
 const CyclicFloat32Matrix = getCyclicTypedArrayMatrixClass(Float32Array);
 
-export { CyclicImageData, CyclicFloat32Array,CyclicArray, CyclicFloat32Matrix, Float32Matrix }
+export { CyclicImageData, CyclicFloat32Array, CyclicArray, CyclicFloat32Matrix, Float32Matrix }

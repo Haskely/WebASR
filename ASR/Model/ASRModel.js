@@ -1,11 +1,11 @@
 import { TFJSGraphModelNetwork } from "./Network/Network.js";
-import {LogStftFeature} from './Feature/DataParser.js';
+import { LogStftFeature } from './Feature/DataParser.js';
 import { PinYin } from './Label/pinyinbase.js';
 import './Network/tensorflowjs/tfjs@2.7.0.js';
 import { baseURI } from "../../utils/other_utils.js";
 
 class ASRModel {
-    constructor(){
+    constructor() {
         // this.init();
     };
 
@@ -29,10 +29,10 @@ class ASRModel {
         console.log(`准备加载feature...`);
         const response = await fetch(ModelDir + 'feature.json');
         this.featureConfig = await response.json();
-        this.feature = new LogStftFeature(this.featureConfig.sampleRate,this.featureConfig.fft_s,this.featureConfig.hop_s);
+        this.feature = new LogStftFeature(this.featureConfig.sampleRate, this.featureConfig.fft_s, this.featureConfig.hop_s);
     };
 
-    initNetwork = async (ModelDir) =>{
+    initNetwork = async (ModelDir) => {
         console.log(`准备加载model...`);
         console.log(`当前tensorflowJS的Backend:${tf.getBackend()}`);
         this.tfjs_model = await TFJSGraphModelNetwork.loadGraphModel(ModelDir + 'model.json');
@@ -40,11 +40,11 @@ class ASRModel {
         const preloadTimeN = 1024;
         const frequencyN = Math.round(this.feature.fft_s * this.feature.sampleRate / 2) + 1;
         const preloadRes = this.tfjs_model.predict(tf.zeros([1, preloadTimeN, frequencyN]));
-        const viewK = preloadTimeN/preloadRes.shape[1];
-        console.log(`model时间维视野缩放比为${viewK},因此单个拼音输出视野时长为${this.feature.hop_s*viewK}s`);
+        const viewK = preloadTimeN / preloadRes.shape[1];
+        console.log(`model时间维视野缩放比为${viewK},因此单个拼音输出视野时长为${this.feature.hop_s * viewK}s`);
         console.log(`model预热完成`);
         this.viewK = viewK;
-        this.eachOutPutTime = viewK*this.feature.hop_s;
+        this.eachOutPutTime = viewK * this.feature.hop_s;
     };
 
     predictAudioData = async (audioData) => {
@@ -60,14 +60,14 @@ class ASRModel {
         const pinyinArray = argmax_res_array.map(max_arg => this.pinyin.num2py(max_arg));
         const predictResult = {
             // 'softmax_resArray':softmax_res.arraySync(),
-            'pinyinArray':pinyinArray,
-            'audioEndTime':stftData.audioEndTime,
-            'audioStartTime':stftData.audioStartTime,
-            'timeLength':stftData.timeLength,
+            'pinyinArray': pinyinArray,
+            'audioEndTime': stftData.audioEndTime,
+            'audioStartTime': stftData.audioStartTime,
+            'timeLength': stftData.timeLength,
         };
         return predictResult;
     };
-    
+
 };
 
-export {ASRModel};
+export { ASRModel };

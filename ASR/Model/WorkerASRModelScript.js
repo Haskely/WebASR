@@ -5,32 +5,32 @@
     const { StftData } = await import("../../Audio/AudioContainer.js");
     const { Float32Matrix } = await import("../../utils/CyclicContainer.js");
 
-    class WorkerASRModelScript extends MyWorkerScript{
-        constructor(worker_self){
+    class WorkerASRModelScript extends MyWorkerScript {
+        constructor(worker_self) {
             super(worker_self);
             this.asrModel = new ASRModel();
-    
-            this.registerFunctionID('init',async (...args)=>{
+
+            this.registerFunctionID('init', async (...args) => {
                 const theReturn = await this.asrModel.init(...args);
                 const asrModel = this.asrModel;
                 const feature = asrModel.feature;
-                this.sendData('SetProperties',{
-                    featureConfig : asrModel.featureConfig,
-                    feature:{
-                        name:feature.name,
-                        sampleRate:feature.sampleRate,
-                        fft_n:feature.fft_n,
-                        fft_s:feature.fft_s,
-                        hop_n:feature.hop_n,
-                        hop_s:feature.hop_s,
+                this.sendData('SetProperties', {
+                    featureConfig: asrModel.featureConfig,
+                    feature: {
+                        name: feature.name,
+                        sampleRate: feature.sampleRate,
+                        fft_n: feature.fft_n,
+                        fft_s: feature.fft_s,
+                        hop_n: feature.hop_n,
+                        hop_s: feature.hop_s,
                     },
-                    viewK : asrModel.viewK,
+                    viewK: asrModel.viewK,
                     eachOutPutTime: asrModel.eachOutPutTime,
                 });
                 return theReturn;
             });
-            this.registerFunctionID('predictAudioData',this.asrModel.predictAudioData);
-            this.registerFunctionID('predictStftData',(stftDataContent) => {
+            this.registerFunctionID('predictAudioData', this.asrModel.predictAudioData);
+            this.registerFunctionID('predictStftData', (stftDataContent) => {
                 const stftData = new StftData(
                     stftDataContent.sampleRate,
                     stftDataContent.fft_n,

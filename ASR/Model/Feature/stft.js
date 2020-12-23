@@ -7,14 +7,14 @@ import { Float32Matrix } from "../../../utils/CyclicContainer.js";
  * @param {*} hop_n 
  */
 function nj_stft(audio_slice, fft_n, hop_n) {
-    
+
     let alignLen = audio_slice.length - fft_n;
     if (alignLen < 0) {
         const ori_audioslice = audio_slice;
         audio_slice = new Float32Array(fft_n);
-        const pad_n = Math.round(-alignLen/2);
-        for(let i=0;i<ori_audioslice.length;i++){
-            audio_slice[i+pad_n] = ori_audioslice[i];
+        const pad_n = Math.round(-alignLen / 2);
+        for (let i = 0; i < ori_audioslice.length; i++) {
+            audio_slice[i + pad_n] = ori_audioslice[i];
         };
         alignLen = 0;
     };
@@ -42,4 +42,4 @@ function nj_stft(audio_slice, fft_n, hop_n) {
     return stftMatrix;
 };
 
-export {nj_stft};
+export { nj_stft };

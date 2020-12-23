@@ -130,7 +130,7 @@ class StftDrawerFlexible extends Drawer {
         this.stftAreaHeight = this.canvas.height - time_area_h;
 
         this.cyclicImageData = new CyclicImageData(stftFrequencyN, maxStftTimeN);
-        this.cyclicStftMaxValues = new CyclicFloat32Array(Math.round(sampleRate/fft_n));
+        this.cyclicStftMaxValues = new CyclicFloat32Array(Math.round(sampleRate / fft_n));
         // this._half_pad_n = (fft_n / hop_n - 1) * 0.5 * this.stftAreaHeight / stftFrequencyN;
     };
 
@@ -159,7 +159,7 @@ class StftDrawerFlexible extends Drawer {
         if (!stftData.stft.rowsN) return;
 
         const imageData = this.canvas_ctx.createImageData(stftData.stft.columnsN, stftData.stft.rowsN);
-        
+
         this.cyclicStftMaxValues.update([Math.max(...stftData.stft.typedArrayView)])
         const max_value = Math.max(...this.cyclicStftMaxValues.typedArrayView)
         for (let p = 0; p * 4 < imageData.data.length; p += 1) {
@@ -309,4 +309,4 @@ class StftDrawer2 extends Drawer {
     };
 };
 
-export {StftDrawer};
+export { StftDrawer };

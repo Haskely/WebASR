@@ -1,6 +1,6 @@
 // Modified from https://github.com/mrdoob/stats.js/
 
-;(function(root, factory) {
+; (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     define([], factory)
   } else if (typeof module === 'object' && module.exports) {
@@ -8,10 +8,10 @@
   } else {
     root.erudaFps = factory()
   }
-})(this, function() {
+})(this, function () {
   var w = window.innerWidth
 
-  return function(eruda) {
+  return function (eruda) {
     var WIDTH = w,
       HEIGHT = 192,
       TEXT_X = 12,
@@ -30,7 +30,7 @@
 
     var Fps = Tool.extend({
       name: 'fps',
-      init: function($el, container) {
+      init: function ($el, container) {
         this.callSuper(Tool, 'init', arguments)
 
         this._style = util.evalCss(
@@ -51,23 +51,23 @@
         this._initCanvas()
         this._initCfg()
       },
-      show: function() {
+      show: function () {
         this._start()
 
         this.callSuper(Tool, 'show', arguments)
       },
-      hide: function() {
+      hide: function () {
         if (!this._alwaysActivated) this._stop()
 
         this.callSuper(Tool, 'hide', arguments)
       },
-      destroy: function() {
+      destroy: function () {
         this._stop()
         util.evalCss.remove(this._style)
         this.callSuper(Tool, 'destroy', arguments)
         this._rmCfg()
       },
-      _rmCfg: function() {
+      _rmCfg: function () {
         var cfg = this.config
 
         var settings = this._container.get('settings')
@@ -75,7 +75,7 @@
 
         settings.remove(cfg, 'alwaysActivated').remove('Fps')
       },
-      _start: function() {
+      _start: function () {
         if (this._isRunning) return
 
         var self = this
@@ -91,19 +91,19 @@
 
         loop()
       },
-      _stop: function() {
+      _stop: function () {
         this._isRunning = false
         this._beginTime = util.now()
         this._prevTime = this._beginTime
         this._frames = 0
       },
-      _appendTpl: function() {
+      _appendTpl: function () {
         this._$el.html('<canvas></canvas>')
 
         this._canvas = this._$el.find('canvas').get(0)
         this._ctx = this._canvas.getContext('2d')
       },
-      _initCanvas: function() {
+      _initCanvas: function () {
         var canvas = this._canvas
         var ctx = this._ctx
 
@@ -128,7 +128,7 @@
         ctx.globalAlpha = 0.9
         ctx.fillRect(GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT)
       },
-      _initCfg: function() {
+      _initCfg: function () {
         var container = this._container
         var cfg = (this.config = Settings.createCfg('fps', {
           alwaysActivated: true
@@ -138,7 +138,7 @@
 
         var self = this
 
-        cfg.on('change', function(key, val) {
+        cfg.on('change', function (key, val) {
           switch (key) {
             case 'alwaysActivated':
               self._alwaysActivated = val
@@ -153,7 +153,7 @@
           .switch(cfg, 'alwaysActivated', 'Always Activated')
           .separator()
       },
-      _update: function() {
+      _update: function () {
         this._frames++
 
         var prevTime = this._prevTime,
@@ -168,7 +168,7 @@
 
         this._beginTime = time
       },
-      _draw: function(val, maxVal) {
+      _draw: function (val, maxVal) {
         this._min = Math.min(this._min, val)
         this._max = Math.max(this._max, val)
 
