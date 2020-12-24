@@ -179,7 +179,6 @@ class AudioFlow extends AudioFlowProcesser {
     openStft = (fft_s = 0.032, hop_s = 0.008) => {
         if (!this.reciveStftDataEvent) {
             const logstftFeature = new LogStftFeature(this.sampleRate, fft_s, hop_s),
-                logstft_audioData = logstftFeature.logstft_audioData,
                 sampleRate = logstftFeature.sampleRate,
                 fft_n = logstftFeature.fft_n,
                 hop_n = logstftFeature.hop_n,
@@ -224,7 +223,7 @@ class AudioFlow extends AudioFlowProcesser {
                             alignedAudioData.sampleRate,
                             fft_n,
                             hop_n,
-                            logstft_audioData(alignedAudioData),
+                            logstftFeature.logstft_audioData(alignedAudioData),
                             alignedAudioData.audioEndTime,
                         );
                         return stftData;

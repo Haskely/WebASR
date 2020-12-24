@@ -1,4 +1,4 @@
-import './tensorflowjs/tfjs@2.7.0.js';
+import './tensorflowjs/tf.min.js'
 class Network {
 
     constructor() {
@@ -7,9 +7,5 @@ class Network {
 
     predict = (data) => { };
 };
-
-class TFJSGraphModelNetwork {
-    static loadGraphModel = tf.loadGraphModel;
-};
-
-export { TFJSGraphModelNetwork };
+const _tf = tf;
+export { _tf as tf };

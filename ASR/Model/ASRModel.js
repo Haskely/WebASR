@@ -1,7 +1,6 @@
-import { TFJSGraphModelNetwork } from "./Network/Network.js";
+import { tf } from './Network/Network.js';
 import { LogStftFeature } from './Feature/DataParser.js';
 import { PinYin } from './Label/pinyinbase.js';
-import './Network/tensorflowjs/tfjs@2.7.0.js';
 import { baseURI } from "../../utils/other_utils.js";
 
 class ASRModel {
@@ -35,7 +34,7 @@ class ASRModel {
     initNetwork = async (ModelDir) => {
         console.log(`准备加载model...`);
         console.log(`当前tensorflowJS的Backend:${tf.getBackend()}`);
-        this.tfjs_model = await TFJSGraphModelNetwork.loadGraphModel(ModelDir + 'model.json');
+        this.tfjs_model = await tf.loadGraphModel(ModelDir + 'model.json');
         console.log(`model加载完成，进行model预热...`);
         const preloadTimeN = 1024;
         const frequencyN = Math.round(this.feature.fft_s * this.feature.sampleRate / 2) + 1;
